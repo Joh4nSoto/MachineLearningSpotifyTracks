@@ -324,7 +324,7 @@ plt.show()
 
 **Salida:**
 
-![Mapa de Calor - Correlación de Variables Numéricas con Popularidad](heatmap.png)
+![Mapa de Calor - Correlación de Variables Numéricas con Popularidad](imagenes/heatmap.png)
 
 **Hallazgos del mapa de calor:**
 
@@ -380,7 +380,7 @@ plt.show()
 
 **Salida:**
 
-![Top 15 Géneros con Mayor Popularidad Promedio](top_generos_populares.png)
+![Top 15 Géneros con Mayor Popularidad Promedio](imagenes/top_generos_populares.png)
 
 **Conclusión:** El género de música más popular es **pop-film**, seguido de **k-pop** y **chill**.
 
@@ -428,7 +428,7 @@ plt.show()
 
 **Salida:**
 
-![Top 15 Géneros con Menor Popularidad Promedio](top_generos_menos_populares.png)
+![Top 15 Géneros con Menor Popularidad Promedio](imagenes/top_generos_menos_populares.png)
 
 **Conclusión:** Los géneros musicales menos populares son **iranian**, seguido de **romance** y **latin**.
 
@@ -477,7 +477,7 @@ plt.show()
 
 **Salida:**
 
-![Popularidad Promedio según Tempo](tempo_popularidad.png)
+![Popularidad Promedio según Tempo](imagenes/tempo_popularidad.png)
 
 **Conclusión:** El rango óptimo de tempo para una popularidad media está entre los **80 y 170 BPM**, con un mayor alcance de popularidad en los **140 BPM**.
 
@@ -532,7 +532,7 @@ plt.show()
 
 **Salida:**
 
-![Popularidad Promedio según Compás](time_signature_popularidad.png)
+![Popularidad Promedio según Compás](imagenes/time_signature_popularidad.png)
 
 **Conclusión:** El tiempo de compás más popular (descartando el tempo = 0, que es imposible y por lo tanto dato inválido) es el de **4/4**.
 
@@ -583,7 +583,7 @@ plt.show()
 
 **Salida:**
 
-![Perfil Acústico del Top de Canciones Populares](perfil_acustico.png)
+![Perfil Acústico del Top de Canciones Populares](imagenes/perfil_acustico.png)
 
 **Conclusión:** Las canciones más populares (popularidad ≥ 75) tienden a tener:
 
