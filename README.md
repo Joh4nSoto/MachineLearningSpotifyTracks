@@ -1025,6 +1025,8 @@ Además, SMOTE sobre las 113 columnas one-hot genera observaciones sintéticas c
 | XGBoost | **0.386** | 0.8183 | 0.7222 |
 | Logistic Regression | **0.399** | 0.7944 | 0.6878 |
 
+![Umbrales optimos encontrados](imagenes/1.png)
+
 ---
 
 ## 12. Evaluación global en test
@@ -1057,6 +1059,8 @@ Además, SMOTE sobre las 113 columnas one-hot genera observaciones sintéticas c
 |---|---|---|
 | **Real: No Hit** | 11,078 (TN) | 2,441 (FP) |
 | **Real: Hit** | 439 (FN) | 3,789 (TP) |
+
+![Matriz de confusion](imagenes/2.png)
 
 ### Interpretación de negocio
 
@@ -1125,6 +1129,8 @@ Además, SMOTE sobre las 113 columnas one-hot genera observaciones sintéticas c
 
 ### PCA sobre 14 características acústicas
 
+![PCA y kmeans](imagenes/3.png)
+
 - **Componentes retenidos:** 10 (varianza acumulada: **89.2%**)
 - Varianza por componente:
   - PC1: 21.11%
@@ -1154,6 +1160,8 @@ Además, SMOTE sobre las 113 columnas one-hot genera observaciones sintéticas c
 | Test | 1,674 | 7,128 | 5,255 | 3,690 |
 
 ### Perfil acústico por cluster
+
+![clusters](imagenes/4.png)
 
 | Cluster | danceability | energy | acousticness | instrumentalness | valence | tempo | is_hit |
 |---|---|---|---|---|---|---|---|
