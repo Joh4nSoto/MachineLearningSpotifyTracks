@@ -1,0 +1,10 @@
+KPI,Tipo de Analisis,Explicacion Sencilla,Uso en Spotify,Meta Sugerida
+MAE,Prediccion de Valor,Error promedio en puntos de popularidad.,Saber que tan cerca estuvo la prediccion de la nota real (0-100).,Fallar por 10 puntos o menos
+RMSE,Prediccion de Valor,Error promedio que castiga con mas fuerza las equivocaciones grandes.,Detectar si el modelo comete errores graves clasificando un exito como fracaso.,Error ajustado menor a 12 puntos
+R2,Prediccion de Valor,Porcentaje de la popularidad que se debe solo a la musica y no al marketing.,Determinar cuanto peso tienen el ritmo y el sonido frente a la publicidad.,Explicar al menos el 45% del exito
+Recall@Hit,Deteccion de Hits,Porcentaje de canciones exitosas que el sistema logro descubrir.,Evitar que la discografica se pierda una cancion que seria un gran exito.,Detectar al menos el 70% de las canciones exitosas
+PR-AUC,Deteccion de Hits,Medida de precision para encontrar canciones exitosas cuando son muy escasas.,Evaluar si la lista de canciones elegidas como posibles hits es confiable.,Puntaje de balance mayor a 0.50
+F2-Score,Deteccion de Hits,Puntaje que le da el doble de importancia a no dejar escapar ningun hit.,Asegurar que se prueben todas las canciones buenas sin importar algunos falsos hits.,Puntaje combinado mayor a 0.65
+NDCG@20,Generacion de Listas,Evalua si las canciones mas populares quedaron al principio de la lista.,Verificar que el algoritmo ordene las mejores canciones arriba en la playlist.,Calidad de orden superior al 80%
+Waste Rate,Negocio y Dinero,Porcentaje de canciones promocionadas como hits que terminaron siendo un fracaso.,Calcular cuanto dinero de marketing se arriesga a perder el sello.,No malgastar mas del 15% del presupuesto
+Diversity Score,Etica y Negocio,Variedad de generos musicales presentes entre las canciones mas promocionadas.,Evitar promocionar unicamente un genero e ignorar a los demas.,Incluir al menos 15 generos distintos
