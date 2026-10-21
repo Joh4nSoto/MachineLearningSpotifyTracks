@@ -113,6 +113,17 @@ KPI: Diversity Score  [ETICA Y NEGOCIO]
   • Meta:       Incluir al menos 15 generos distintos
 -----------------------------------------------------------------
 ```
+# **JUSTIFICACION DE HERRAMIENTAS**
+
+Google Colab / Jupyter Notebook: Entorno interactivo que permite combinar código ejecutable en Python, visualizaciones y documentación en Markdown.
+
+Git / GitHub: Control de versiones colaborativo para registrar el historial de cambios e integrar el trabajo del equipo.
+
+Pandas: Manipulación y estructuración eficiente de los datos tabulares mediante DataFrames.
+
+Matplotlib & Seaborn: Creación de visualizaciones estadísticas claras para el Análisis Exploratorio de Datos (EDA).
+
+Scikit-learn: Preparación y codificación de variables categóricas para el flujo de trabajo de ML.
 
 ---
 
