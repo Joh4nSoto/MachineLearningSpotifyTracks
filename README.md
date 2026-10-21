@@ -115,18 +115,34 @@ KPI: Diversity Score  [ETICA Y NEGOCIO]
 ```
 # **JUSTIFICACION DE HERRAMIENTAS**
 
-Google Colab / Jupyter Notebook: Entorno interactivo que permite combinar código ejecutable en Python, visualizaciones y documentación en Markdown.
+**Google Colab / Jupyter Notebook**: Entorno interactivo que permite combinar código ejecutable en Python, visualizaciones y documentación en Markdown.
 
-Git / GitHub: Control de versiones colaborativo para registrar el historial de cambios e integrar el trabajo del equipo.
+**Git / GitHub**: Control de versiones colaborativo para registrar el historial de cambios e integrar el trabajo del equipo.
 
-Pandas: Manipulación y estructuración eficiente de los datos tabulares mediante DataFrames.
+**Pandas**: Manipulación y estructuración eficiente de los datos tabulares mediante DataFrames.
 
-Matplotlib & Seaborn: Creación de visualizaciones estadísticas claras para el Análisis Exploratorio de Datos (EDA).
+**Matplotlib & Seaborn**: Creación de visualizaciones estadísticas claras para el Análisis Exploratorio de Datos (EDA).
 
-Scikit-learn: Preparación y codificación de variables categóricas para el flujo de trabajo de ML.
+**Scikit-learn**: Preparación y codificación de variables categóricas para el flujo de trabajo de ML.
 
 ---
+## **Metodología CRISP-DM**
+---
+El proyecto sigue el marco estándar de la industria CRISP-DM (Cross-Industry Standard Process for Data Mining):
 
+Comprensión del Negocio: Definición del problema de estimación de popularidad e identificación de oportunidades de inversión promocional.
+
+Comprensión de los Datos: Carga del dataset de Spotify (114,000 registros), revisión de tipos de datos, valores nulos y distribuciones.
+
+Preparación de Datos: Filtrado de registros inválidos (time_signature, tempo), tratamiento de duplicados reales, codificación categórica y exportación del conjunto de datos limpio.
+
+Modelado: Selección y entrenamiento de algoritmos supervisados (p. ej., Regresión Lineal, Random Forest, XGBoost).
+
+Evaluación: Medición del desempeño usando los KPIs definidos.
+
+Despliegue: Integración de las predicciones en herramientas de toma de decisiones para sellos y productores.
+
+---
 ## **1. CARGA INICIAL EDA**
 
 ```python
