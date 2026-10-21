@@ -45,7 +45,74 @@ Desarrollar un modelo predictivo de Machine Learning que permita estimar la popu
 
 ## **DEFINICIÓN DE KPIs**
 
-Los KPIs permitirán medir el comportamiento de las canciones y facilitar la identificación de patrones asociados a su popularidad. Estos indicadores estarán orientados principalmente a comprender el comportamiento del catálogo musical y apoyar la toma de decisiones.
+```
+=================================================================
+ RESUMEN DE KPIS - PREDICCIÓN DE POPULARIDAD EN SPOTIFY
+=================================================================
+
+KPI: MAE  [PREDICCION DE VALOR]
+─────────────────────────────────────────────────────────────────
+  • Concepto:  Error promedio en puntos de popularidad.
+  • Aplicación: Saber que tan cerca estuvo la prediccion de la nota real (0-100).
+  • Meta:       Fallar por 10 puntos o menos
+-----------------------------------------------------------------
+
+KPI: RMSE  [PREDICCION DE VALOR]
+─────────────────────────────────────────────────────────────────
+  • Concepto:  Error promedio que castiga con mas fuerza las equivocaciones grandes.
+  • Aplicación: Detectar si el modelo comete errores graves clasificando un exito como fracaso.
+  • Meta:       Error ajustado menor a 12 puntos
+-----------------------------------------------------------------
+
+KPI: R2  [PREDICCION DE VALOR]
+─────────────────────────────────────────────────────────────────
+  • Concepto:  Porcentaje de la popularidad que se debe solo a la musica y no al marketing.
+  • Aplicación: Determinar cuanto peso tienen el ritmo y el sonido frente a la publicidad.
+  • Meta:       Explicar al menos el 45% del exito
+-----------------------------------------------------------------
+
+KPI: Recall@Hit  [DETECCION DE HITS]
+─────────────────────────────────────────────────────────────────
+  • Concepto:  Porcentaje de canciones exitosas que el sistema logro descubrir.
+  • Aplicación: Evitar que la discografica se pierda una cancion que seria un gran exito.
+  • Meta:       Detectar al menos el 70% de las canciones exitosas
+-----------------------------------------------------------------
+
+KPI: PR-AUC  [DETECCION DE HITS]
+─────────────────────────────────────────────────────────────────
+  • Concepto:  Medida de precision para encontrar canciones exitosas cuando son muy escasas.
+  • Aplicación: Evaluar si la lista de canciones elegidas como posibles hits es confiable.
+  • Meta:       Puntaje de balance mayor a 0.50
+-----------------------------------------------------------------
+
+KPI: F2-Score  [DETECCION DE HITS]
+─────────────────────────────────────────────────────────────────
+  • Concepto:  Puntaje que le da el doble de importancia a no dejar escapar ningun hit.
+  • Aplicación: Asegurar que se prueben todas las canciones buenas sin importar algunos falsos hits.
+  • Meta:       Puntaje combinado mayor a 0.65
+-----------------------------------------------------------------
+
+KPI: NDCG@20  [GENERACION DE LISTAS]
+─────────────────────────────────────────────────────────────────
+  • Concepto:  Evalua si las canciones mas populares quedaron al principio de la lista.
+  • Aplicación: Verificar que el algoritmo ordene las mejores canciones arriba en la playlist.
+  • Meta:       Calidad de orden superior al 80%
+-----------------------------------------------------------------
+
+KPI: Waste Rate  [NEGOCIO Y DINERO]
+─────────────────────────────────────────────────────────────────
+  • Concepto:  Porcentaje de canciones promocionadas como hits que terminaron siendo un fracaso.
+  • Aplicación: Calcular cuanto dinero de marketing se arriesga a perder el sello.
+  • Meta:       No malgastar mas del 15% del presupuesto
+-----------------------------------------------------------------
+
+KPI: Diversity Score  [ETICA Y NEGOCIO]
+─────────────────────────────────────────────────────────────────
+  • Concepto:  Variedad de generos musicales presentes entre las canciones mas promocionadas.
+  • Aplicación: Evitar promocionar unicamente un genero e ignorar a los demas.
+  • Meta:       Incluir al menos 15 generos distintos
+-----------------------------------------------------------------
+```
 
 ---
 
