@@ -143,6 +143,43 @@ Evaluación: Medición del desempeño usando los KPIs definidos.
 Despliegue: Integración de las predicciones en herramientas de toma de decisiones para sellos y productores.
 
 ---
+# **SESGOS, ETICA Y PRIVACIDAD**
+---
+
+1. **Sesgos Identificados en el Dataset e Impacto**
+* **Sesgo de Muestreo** (Duplicación por Género): En el dataset crudo, una misma canción figuraba en múltiples filas si pertenecía a varios géneros. Esto sobrerepresentaba artificialmente ciertas canciones en la muestra, alterando las distribuciones de variables acústicas y sesgando la importancia de géneros comunes. (Se corrigió agrupando por track_id mediante encoding multi-etiqueta).
+
+* **Sesgo de Recencia**: La métrica popularity mide reproducciones recientes. Castiga a canciones históricas de catálogo que conservan valor comercial pero no reproducciones masivas en el presente.
+
+* * **Impacto**: Riesgo de desinvertir en catálogos atemporales y sobreponderar modas pasajeras.
+
+* **Sesgo de Retroalimentación Positiva** (Efecto Mateo): Las canciones promocionadas en playlists oficiales acumulan reproducciones, lo que infla su popularidad.
+
+* * **Impacto**: El modelo aprende a recomendar lo que ya tuvo presupuesto de marketing, invisibilizando el talento independiente.
+
+
+---
+
+
+2. **Riesgos Éticos**
+* **Homogeneización Cultural**: Promover únicamente canciones con parámetros acústicos de éxito comprobado sofoca la diversidad artística y la innovación musical.
+
+* **Iniquidad y Opacidad**: Crea barreras de entrada injustas para artistas sin respaldo financiero y expone la toma de decisiones a la manipulación por granjas de reproducciones (stream farming).
+
+
+---
+
+
+3. **Datos Personales y Marco Normativo**
+
+* **Datos**: No contiene datos de identificación personal (PII) de los oyentes. Nombres de artistas y canciones son datos públicos protegidos por Propiedad Intelectual.
+
+**Normativa Aplicable**:
+
+* GDPR / Ley 19.628 (Chile): Regula la recolección consentida de datos de consumo de usuarios en el origen para calcular métricas de streaming.
+
+* EU AI Act: Exige transparencia, gobernanza de datos y mitigación de sesgos en sistemas algorítmicos de recomendación y perfilamiento comercial.
+
 ## **1. CARGA INICIAL EDA**
 
 ```python
@@ -202,6 +239,23 @@ Data columns (total 21 columns):
 dtypes: bool(1), float64(9), int64(6), object(5)
 memory usage: 17.5+ MB
 ```
+# **Estrategia Multietiqueta (Multi-label Encoding) y Manejo de Dimensionalidad**
+**Justificación de la Solución Adoptada:**
+
+Si se conservan las filas duplicadas asignando una fila por cada género:
+
+* Fuga de Datos (Data Leakage): Al dividir el conjunto de datos en Entrenamiento (Train) y Prueba (Test), la misma canción aparecerá en ambos lados, permitiendo que el modelo memorice datos y arroje métricas infladas artificialmente.
+
+* Sesgo de Peso: Una canción presente en 5 géneros tendría 5 veces más peso en el aprendizaje del modelo que una canción presente en 1 solo género.
+
+**Decisión: Agrupar el dataset por track_id para que cada canción exista en 1 sola fila, transformando la variable de género en columnas binarias (0 y 1).**
+
+**Análisis de Dimensionalidad:**
+* Generación de columnas: Se crean ~114 columnas de género, pasando el dataset a un total de ~135 columnas.
+
+* Proporción Muestras vs. Características: Al contar con ~80,000 canciones únicas, la relación es de >600 filas por cada columna. Esto evita la "maldición de la dimensionalidad".
+
+* Compatibilidad con ML: Los modelos basados en árboles de decisión (Random Forest, XGBoost, LightGBM) manejan matrices dispersas binarias de alta dimensión sin pérdida de rendimiento ni sobreajuste.
 
 ---
 
@@ -237,7 +291,8 @@ df.isnull().sum()
 | time_signature | 0 |
 | track_genre | 0 |
 
-> Solo vienen 3 datos con valores nulos, así que los visualizamos.
+Evaluación de Duplicados: Al evaluar df.duplicated() sobre todas las columnas, la consulta retorna 0 porque la columna de género varía para la misma canción. Sin embargo, al revisar la columna track_id, se detectan miles de canciones repetidas.
+
 
 ```python
 df[df['artists'].isnull()]
