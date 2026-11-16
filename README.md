@@ -1,1320 +1,783 @@
-# Análisis de Popularidad de Canciones en Spotify
+# Inteligencia Musical: Predicción de Hits en Spotify
 
-**Autores:** Johan Soto, Fernanda Alcaino
-
----
-
-## **CONTEXTO DE LOS DATOS**
-
-- **track_id**: El ID de Spotify para la pista.
-- **artists**: Los nombres de los artistas que interpretaron la pista. Si hay más de un artista, se separan con un `;`.
-- **album_name**: El nombre del álbum en el que aparece la pista.
-- **track_name**: Nombre de la pista.
-- **popularity**: La popularidad de una canción es un valor entre 0 y 100, donde 100 representa la máxima popularidad. Se calcula mediante un algoritmo y se basa, principalmente, en el número total de reproducciones y la antigüedad de estas. En general, las canciones que se reproducen mucho actualmente tendrán mayor popularidad que las que se reprodujeron mucho en el pasado. Las canciones duplicadas (por ejemplo, la misma canción de un sencillo y de un álbum) se valoran de forma independiente. La popularidad del artista y del álbum se deriva matemáticamente de la popularidad de la canción.
-- **duration_ms**: La duración de la pista en milisegundos.
-- **explicit**: Indica si la canción contiene letras explícitas (verdadero = sí; falso = no; desconocido).
-- **danceability**: La bailabilidad describe qué tan adecuada es una pista para bailar basándose en una combinación de elementos musicales que incluyen el tempo, la estabilidad del ritmo, la fuerza del compás y la regularidad general. Un valor de 0,0 es la menos bailable y 1,0 es la más bailable.
-- **energy**: La energía es una medida de 0,0 a 1,0 y representa una medida perceptual de intensidad y actividad. Por lo general, las pistas enérgicas se sienten rápidas, fuertes y ruidosas. Por ejemplo, el death metal tiene alta energía, mientras que un preludio de Bach obtiene una puntuación baja en la escala.
-- **key**: La clave en la que se encuentra la pista. Los números enteros se corresponden con los tonos utilizando la notación estándar de la clase de tono. Por ejemplo 0 = C, 1 = C♯/D♭, 2 = D, etc. Si no se detectó ninguna clave, el valor es -1.
-- **loudness**: El nivel de sonoridad general de una pista en decibelios (dB).
-- **mode**: El modo indica la modalidad (mayor o menor) de una pista, el tipo de escala de la que se deriva su contenido melódico. La modalidad mayor se representa con 1 y la menor con 0.
-- **speechiness**: La detección de palabras habladas en una pista indica que la grabación es más exclusivamente hablada (por ejemplo, un programa de entrevistas, un audiolibro, poesía), más cerca de 1,0 estará el valor del atributo. Los valores superiores a 0,66 describen pistas que probablemente estén compuestas enteramente de palabras habladas. Los valores entre 0,33 y 0,66 describen pistas que pueden contener tanto música como habla, ya sea en secciones o superpuestas, incluyendo casos como la música rap. Los valores inferiores a 0,33 probablemente representan música y otras pistas que no son habladas.
-- **acousticness**: Una medida de confianza de 0,0 a 1,0 sobre si la pista es acústica. 1,0 representa una alta confianza de que la pista es acústica.
-- **instrumentalness**: Predice si una pista no contiene voces. Los sonidos "ooh" y "aah" se tratan como instrumentales en este contexto. Las pistas de rap o palabra hablada son claramente "vocales". Cuanto más cerca esté el valor de instrumentalidad de 1.0, mayor será la probabilidad de que la pista no contenga contenido vocal.
-- **liveness**: Detecta la presencia de público en la grabación. Valores de Liveness más altos representan una mayor probabilidad de que la pista se haya interpretado en directo. Un valor superior a 0,8 indica una alta probabilidad de que la pista sea en directo.
-- **valence**: Una medida de 0,0 a 1,0 que describe la positividad musical que transmite una pista. Las pistas con alta valencia suenan más positivas (por ejemplo, alegres, joviales, eufóricas), mientras que las pistas con baja valencia suenan más negativas (por ejemplo, tristes, deprimidas, enojadas).
-- **tempo**: El tempo estimado general de una pista en pulsaciones por minuto (BPM). En terminología musical, el tempo es la velocidad o ritmo de una pieza determinada y se deriva directamente de la duración promedio de las pulsaciones.
-- **time_signature**: Un compás estimado. El compás (o métrica) es una convención de notación para especificar cuántos pulsos hay en cada compás (o medida). El compás varía de 3 a 7, indicando compases de 3/4, a 7/4.
-- **track_genre**: El género al que pertenece la pista.
+**Asignatura:** MLY1101 Machine Learning · Duoc UC · Evaluación Parcial N°3
+**Caso C:** Inteligencia musical y predicción de popularidad de canciones (Spotify Tracks)
+**Grupo 8:** Johan Soto, Fernanda Alcaino
+**Repositorio:** `Joh4nSoto/MachineLearningSpotifyTracks`
 
 ---
 
-## **DESCRIPCIÓN DEL PROBLEMA DE NEGOCIO**
+## Resumen ejecutivo
 
-La industria musical actual es un mercado altamente saturado y competitivo, donde miles de canciones son publicadas diariamente en plataformas de streaming como Spotify. En este contexto, productores, artistas y sellos discográficos invierten grandes cantidades de recursos en la creación y comercialización de canciones sin tener certeza de su éxito comercial. Existe una alta incertidumbre respecto a qué combinaciones específicas de características sonoras (como la energía, qué tan bailable es la canción o el tono) capturan mejor la atención de los oyentes.
+**Pregunta de negocio.** Un sello discográfico debe decidir *antes del lanzamiento* en qué canciones invertir su
+presupuesto de promoción. ¿Podemos anticipar, solo con información disponible al lanzar, qué canciones serán un
+**hit** (`popularity ≥ 50`, el 24% superior del catálogo)?
 
-Para resolver este problema, se busca desarrollar una inteligencia musical basada en algoritmos predictivos que estimen la popularidad de las pistas. Esto permitirá anticipar el éxito comercial, tomar decisiones estratégicas más precisas y evitar el gasto ineficiente de presupuesto promocional en canciones que probablemente no tendrán un alto impacto.
+**Respuesta corta.** Sí, pero menos de lo que creíamos. El modelo elegido (**XGBoost**) ordena las canciones
+**2.6 veces mejor que el azar** (PR-AUC 0.63 frente a 0.24) y, con el umbral de negocio, **descubre 71 de cada 100
+hits** gastando el **47% del presupuesto en canciones que no lo serán**, frente al **76%** que se perdería
+promocionando al azar. Todo esto medido con **artistas que el modelo nunca vio**, que es el caso real del negocio.
 
----
+**Lo más importante que aprendimos:**
 
-## **OBJETIVOS DEL PROYECTO**
+1. **La versión anterior (EV2 original) estaba inflada por fuga de datos.** Reportaba PR-AUC 0.85 porque el modelo
+   "conocía" a los artistas y álbumes del test. Al corregirlo, el desempeño honesto es 0.63. La diferencia no era
+   capacidad predictiva, era información que en la vida real no existe al lanzar una canción.
+2. **La música por sí sola explica solo ~10% de la popularidad.** El 77% de lo que el modelo usa es el **género**,
+   es decir, qué mercados premia la plataforma. El éxito depende más del contexto que del sonido (efecto Mateo).
+3. **El modelo discrimina fuertemente a los géneros de nicho:** detecta el 92% de los hits de géneros mainstream,
+   pero solo el 2% de los hits de géneros de nicho. Por eso **no debe usarse como filtro automático**.
+4. **Varias metas de KPI se fijaron con el modelo que tenía fuga** y hoy no son alcanzables (Waste ≤ 15% implicaría
+   detectar solo el 9% de los hits). Proponemos redefinirlas respecto del azar.
 
-Desarrollar un modelo predictivo de Machine Learning que permita estimar la popularidad de las canciones en Spotify a partir de sus características sonoras y datos, con el fin de optimizar la toma de decisiones comerciales y la asignación de presupuestos en la producción y promoción musical.
+**Recomendación.** Usar XGBoost como **herramienta de priorización** (no de decisión automática), con umbral
+documentado, re-ranking con cupo por género, cuota para artistas emergentes y revisión humana.
 
----
-
-## **DEFINICIÓN DE KPIs**
-
-```
-=================================================================
- RESUMEN DE KPIS - PREDICCIÓN DE POPULARIDAD EN SPOTIFY
-=================================================================
-
-KPI: MAE  [PREDICCION DE VALOR]
-─────────────────────────────────────────────────────────────────
-  • Concepto:  Error promedio en puntos de popularidad.
-  • Aplicación: Saber que tan cerca estuvo la prediccion de la nota real (0-100).
-  • Meta:       Fallar por 10 puntos o menos
------------------------------------------------------------------
-
-KPI: RMSE  [PREDICCION DE VALOR]
-─────────────────────────────────────────────────────────────────
-  • Concepto:  Error promedio que castiga con mas fuerza las equivocaciones grandes.
-  • Aplicación: Detectar si el modelo comete errores graves clasificando un exito como fracaso.
-  • Meta:       Error ajustado menor a 12 puntos
------------------------------------------------------------------
-
-KPI: R2  [PREDICCION DE VALOR]
-─────────────────────────────────────────────────────────────────
-  • Concepto:  Porcentaje de la popularidad que se debe solo a la musica y no al marketing.
-  • Aplicación: Determinar cuanto peso tienen el ritmo y el sonido frente a la publicidad.
-  • Meta:       Explicar al menos el 45% del exito
------------------------------------------------------------------
-
-KPI: Recall@Hit  [DETECCION DE HITS]
-─────────────────────────────────────────────────────────────────
-  • Concepto:  Porcentaje de canciones exitosas que el sistema logro descubrir.
-  • Aplicación: Evitar que la discografica se pierda una cancion que seria un gran exito.
-  • Meta:       Detectar al menos el 70% de las canciones exitosas
------------------------------------------------------------------
-
-KPI: PR-AUC  [DETECCION DE HITS]
-─────────────────────────────────────────────────────────────────
-  • Concepto:  Medida de precision para encontrar canciones exitosas cuando son muy escasas.
-  • Aplicación: Evaluar si la lista de canciones elegidas como posibles hits es confiable.
-  • Meta:       Puntaje de balance mayor a 0.50
------------------------------------------------------------------
-
-KPI: F2-Score  [DETECCION DE HITS]
-─────────────────────────────────────────────────────────────────
-  • Concepto:  Puntaje que le da el doble de importancia a no dejar escapar ningun hit.
-  • Aplicación: Asegurar que se prueben todas las canciones buenas sin importar algunos falsos hits.
-  • Meta:       Puntaje combinado mayor a 0.65
------------------------------------------------------------------
-
-KPI: NDCG@20  [GENERACION DE LISTAS]
-─────────────────────────────────────────────────────────────────
-  • Concepto:  Evalua si las canciones mas populares quedaron al principio de la lista.
-  • Aplicación: Verificar que el algoritmo ordene las mejores canciones arriba en la playlist.
-  • Meta:       Calidad de orden superior al 80%
------------------------------------------------------------------
-
-KPI: Waste Rate  [NEGOCIO Y DINERO]
-─────────────────────────────────────────────────────────────────
-  • Concepto:  Porcentaje de canciones promocionadas como hits que terminaron siendo un fracaso.
-  • Aplicación: Calcular cuanto dinero de marketing se arriesga a perder el sello.
-  • Meta:       No malgastar mas del 15% del presupuesto
------------------------------------------------------------------
-
-KPI: Diversity Score  [ETICA Y NEGOCIO]
-─────────────────────────────────────────────────────────────────
-  • Concepto:  Variedad de generos musicales presentes entre las canciones mas promocionadas.
-  • Aplicación: Evitar promocionar unicamente un genero e ignorar a los demas.
-  • Meta:       Incluir al menos 15 generos distintos
------------------------------------------------------------------
-```
-# **JUSTIFICACION DE HERRAMIENTAS**
-
-**Google Colab / Jupyter Notebook**: Entorno interactivo que permite combinar código ejecutable en Python, visualizaciones y documentación en Markdown.
-
-**Git / GitHub**: Control de versiones colaborativo para registrar el historial de cambios e integrar el trabajo del equipo.
-
-**Pandas**: Manipulación y estructuración eficiente de los datos tabulares mediante DataFrames.
-
-**Matplotlib & Seaborn**: Creación de visualizaciones estadísticas claras para el Análisis Exploratorio de Datos (EDA).
-
-**Scikit-learn**: Preparación y codificación de variables categóricas para el flujo de trabajo de ML.
-
----
-## **Metodología CRISP-DM**
----
-El proyecto sigue el marco estándar de la industria CRISP-DM (Cross-Industry Standard Process for Data Mining):
-
-Comprensión del Negocio: Definición del problema de estimación de popularidad e identificación de oportunidades de inversión promocional.
-
-Comprensión de los Datos: Carga del dataset de Spotify (114,000 registros), revisión de tipos de datos, valores nulos y distribuciones.
-
-Preparación de Datos: Filtrado de registros inválidos (time_signature, tempo), tratamiento de duplicados reales, codificación categórica y exportación del conjunto de datos limpio.
-
-Modelado: Selección y entrenamiento de algoritmos supervisados (p. ej., Regresión Lineal, Random Forest, XGBoost).
-
-Evaluación: Medición del desempeño usando los KPIs definidos.
-
-Despliegue: Integración de las predicciones en herramientas de toma de decisiones para sellos y productores.
-
----
-# **SESGOS, ETICA Y PRIVACIDAD**
----
-
-1. **Sesgos Identificados en el Dataset e Impacto**
-* **Sesgo de Muestreo** (Duplicación por Género): En el dataset crudo, una misma canción figuraba en múltiples filas si pertenecía a varios géneros. Esto sobrerepresentaba artificialmente ciertas canciones en la muestra, alterando las distribuciones de variables acústicas y sesgando la importancia de géneros comunes. (Se corrigió agrupando por track_id mediante encoding multi-etiqueta).
-
-* **Sesgo de Recencia**: La métrica popularity mide reproducciones recientes. Castiga a canciones históricas de catálogo que conservan valor comercial pero no reproducciones masivas en el presente.
-
-* * **Impacto**: Riesgo de desinvertir en catálogos atemporales y sobreponderar modas pasajeras.
-
-* **Sesgo de Retroalimentación Positiva** (Efecto Mateo): Las canciones promocionadas en playlists oficiales acumulan reproducciones, lo que infla su popularidad.
-
-* * **Impacto**: El modelo aprende a recomendar lo que ya tuvo presupuesto de marketing, invisibilizando el talento independiente.
-
+| | EV2 original (con fuga) | **EV3 final (honesto)** |
+|---|---|---|
+| Cómo se evaluó | Split aleatorio + Target Encoding de artista/álbum | Split y validación **por artista** (nunca vistos) |
+| PR-AUC test | 0.849 | **0.630** (azar: 0.241) |
+| ROC-AUC test | 0.939 | **0.847** |
+| ¿Es creíble en producción? | No: usaba información del futuro | **Sí:** CV y test coinciden (0.635 vs 0.630) |
 
 ---
 
+## Índice
 
-2. **Riesgos Éticos**
-* **Homogeneización Cultural**: Promover únicamente canciones con parámetros acústicos de éxito comprobado sofoca la diversidad artística y la innovación musical.
-
-* **Iniquidad y Opacidad**: Crea barreras de entrada injustas para artistas sin respaldo financiero y expone la toma de decisiones a la manipulación por granjas de reproducciones (stream farming).
-
-
----
-
-
-3. **Datos Personales y Marco Normativo**
-
-* **Datos**: No contiene datos de identificación personal (PII) de los oyentes. Nombres de artistas y canciones son datos públicos protegidos por Propiedad Intelectual.
-
-**Normativa Aplicable**:
-
-* GDPR / Ley 19.628 (Chile): Regula la recolección consentida de datos de consumo de usuarios en el origen para calcular métricas de streaming.
-
-* EU AI Act: Exige transparencia, gobernanza de datos y mitigación de sesgos en sistemas algorítmicos de recomendación y perfilamiento comercial.
-
-## **1. CARGA INICIAL EDA**
-
-```python
-import pandas as pd
-df = pd.read_csv("/content/Spotify_Tracks_Dataset.csv")
-```
-
-```python
-df.head()
-```
-
-**Salida:**
-
-| | Unnamed: 0 | track_id | artists | album_name | track_name | popularity | duration_ms | explicit | danceability | energy | ... | loudness | mode | speechiness | acousticness | instrumentalness | liveness | valence | tempo | time_signature | track_genre |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 0 | 0 | 5SuOikwiRyPMVoIQDJUgSV | Gen Hoshino | Comedy | Comedy | 73 | 230666 | False | 0.676 | 0.4610 | ... | -6.746 | 0 | 0.1430 | 0.0322 | 0.000001 | 0.3580 | 0.715 | 87.917 | 4 | acoustic |
-| 1 | 1 | 4qPNDBW1i3p13qLCt0Ki3A | Ben Woodward | Ghost (Acoustic) | Ghost - Acoustic | 55 | 149610 | False | 0.420 | 0.1660 | ... | -17.235 | 1 | 0.0763 | 0.9240 | 0.000006 | 0.1010 | 0.267 | 77.489 | 4 | acoustic |
-| 2 | 2 | 1iJBSr7s7jYXzM8EGcbK5b | Ingrid Michaelson;ZAYN | To Begin Again | To Begin Again | 57 | 210826 | False | 0.438 | 0.3590 | ... | -9.734 | 1 | 0.0557 | 0.2100 | 0.000000 | 0.1170 | 0.120 | 76.332 | 4 | acoustic |
-| 3 | 3 | 6lfxq3CG4xtTiEg7opyCyx | Kina Grannis | Crazy Rich Asians (Original Motion Picture Sou... | Can't Help Falling In Love | 71 | 201933 | False | 0.266 | 0.0596 | ... | -18.515 | 1 | 0.0363 | 0.9050 | 0.000071 | 0.1320 | 0.143 | 181.740 | 3 | acoustic |
-| 4 | 4 | 5vjLSffimiIP26QG5WcN2K | Chord Overstreet | Hold On | Hold On | 82 | 198853 | False | 0.618 | 0.4430 | ... | -9.681 | 1 | 0.0526 | 0.4690 | 0.000000 | 0.0829 | 0.167 | 119.949 | 4 | acoustic |
-
-*(5 filas × 21 columnas)*
-
-```python
-df.info()
-```
-
-**Salida:**
-
-```
-<class 'pandas.core.frame.DataFrame'>
-RangeIndex: 114000 entries, 0 to 113999
-Data columns (total 21 columns):
- #   Column            Non-Null Count   Dtype  
----  ------            --------------   -----  
- 0   Unnamed: 0        114000 non-null  int64  
- 1   track_id          114000 non-null  object 
- 2   artists           113999 non-null  object 
- 3   album_name        113999 non-null  object 
- 4   track_name        113999 non-null  object 
- 5   popularity        114000 non-null  int64  
- 6   duration_ms       114000 non-null  int64  
- 7   explicit          114000 non-null  bool   
- 8   danceability      114000 non-null  float64
- 9   energy            114000 non-null  float64
- 10  key               114000 non-null  int64  
- 11  loudness          114000 non-null  float64
- 12  mode              114000 non-null  int64  
- 13  speechiness       114000 non-null  float64
- 14  acousticness      114000 non-null  float64
- 15  instrumentalness  114000 non-null  float64
- 16  liveness          114000 non-null  float64
- 17  valence           114000 non-null  float64
- 18  tempo             114000 non-null  float64
- 19  time_signature    114000 non-null  int64  
- 20  track_genre       114000 non-null  object 
-dtypes: bool(1), float64(9), int64(6), object(5)
-memory usage: 17.5+ MB
-```
-# **Estrategia Multietiqueta (Multi-label Encoding) y Manejo de Dimensionalidad**
-**Justificación de la Solución Adoptada:**
-
-Si se conservan las filas duplicadas asignando una fila por cada género:
-
-* Fuga de Datos (Data Leakage): Al dividir el conjunto de datos en Entrenamiento (Train) y Prueba (Test), la misma canción aparecerá en ambos lados, permitiendo que el modelo memorice datos y arroje métricas infladas artificialmente.
-
-* Sesgo de Peso: Una canción presente en 5 géneros tendría 5 veces más peso en el aprendizaje del modelo que una canción presente en 1 solo género.
-
-**Decisión: Agrupar el dataset por track_id para que cada canción exista en 1 sola fila, transformando la variable de género en columnas binarias (0 y 1).**
-
-**Análisis de Dimensionalidad:**
-* Generación de columnas: Se crean ~114 columnas de género, pasando el dataset a un total de ~135 columnas.
-
-* Proporción Muestras vs. Características: Al contar con ~80,000 canciones únicas, la relación es de >600 filas por cada columna. Esto evita la "maldición de la dimensionalidad".
-
-* Compatibilidad con ML: Los modelos basados en árboles de decisión (Random Forest, XGBoost, LightGBM) manejan matrices dispersas binarias de alta dimensión sin pérdida de rendimiento ni sobreajuste.
+1. [Problema de negocio y objetivos](#1-problema-de-negocio-y-objetivos)
+2. [KPIs del proyecto](#2-kpis-del-proyecto)
+3. [Fuente de datos](#3-fuente-de-datos)
+4. [Metodología CRISP-DM y herramientas](#4-metodología-crisp-dm-y-herramientas)
+5. [Estructura del proyecto y reproducibilidad](#5-estructura-del-proyecto-y-reproducibilidad)
+6. [EV1 — Comprensión y preparación de datos (resumen)](#6-ev1--comprensión-y-preparación-de-datos-resumen)
+7. [EV2 — Modelamiento, la fuga de datos y su corrección (resumen)](#7-ev2--modelamiento-la-fuga-de-datos-y-su-corrección-resumen)
+8. [EV3 — Optimización, ensambles, generalización y selección (desarrollo principal)](#8-ev3--optimización-ensambles-generalización-y-selección)
+9. [Registro de errores, ajustes y decisiones](#9-registro-de-errores-ajustes-y-decisiones)
+10. [Sesgos del modelo: evidencia, mitigación, impacto y precauciones](#10-sesgos-del-modelo-evidencia-mitigación-impacto-y-precauciones)
+11. [Ética, privacidad y marco normativo](#11-ética-privacidad-y-marco-normativo)
+12. [Conclusiones, limitaciones y recomendaciones para el negocio](#12-conclusiones-limitaciones-y-recomendaciones-para-el-negocio)
+13. [Anexos](#13-anexos)
 
 ---
 
-## **2. BÚSQUEDA DE NULOS Y DUPLICADOS**
-
-```python
-df.isnull().sum()
-```
-
-**Salida:**
-
-| Columna | Nulos |
-|---|---|
-| Unnamed: 0 | 0 |
-| track_id | 0 |
-| artists | 1 |
-| album_name | 1 |
-| track_name | 1 |
-| popularity | 0 |
-| duration_ms | 0 |
-| explicit | 0 |
-| danceability | 0 |
-| energy | 0 |
-| key | 0 |
-| loudness | 0 |
-| mode | 0 |
-| speechiness | 0 |
-| acousticness | 0 |
-| instrumentalness | 0 |
-| liveness | 0 |
-| valence | 0 |
-| tempo | 0 |
-| time_signature | 0 |
-| track_genre | 0 |
-
-Evaluación de Duplicados: Al evaluar df.duplicated() sobre todas las columnas, la consulta retorna 0 porque la columna de género varía para la misma canción. Sin embargo, al revisar la columna track_id, se detectan miles de canciones repetidas.
-
-
-```python
-df[df['artists'].isnull()]
-```
-
-**Salida:**
-
-| | Unnamed: 0 | track_id | artists | album_name | track_name | popularity | duration_ms | explicit | danceability | energy | ... | loudness | mode | speechiness | acousticness | instrumentalness | liveness | valence | tempo | time_signature | track_genre |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 65900 | 65900 | 1kR4gIb7nGxHPI3D2ifs59 | NaN | NaN | NaN | 0 | 0 | False | 0.501 | 0.583 | ... | -9.46 | 0 | 0.0605 | 0.69 | 0.00396 | 0.0747 | 0.734 | 138.391 | 4 | k-pop |
-
-> Y nos dimos cuenta de que los únicos 3 valores nulos corresponden a la misma canción, con popularidad 0, así que no nos afecta en lo absoluto eliminarla.
-
-```python
-df.drop(65900, inplace=True)
-df.info()
-```
-
-**Salida:**
-
-```
-<class 'pandas.core.frame.DataFrame'>
-Index: 113999 entries, 0 to 113999
-Data columns (total 21 columns):
- #   Column            Non-Null Count   Dtype  
----  ------            --------------   -----  
- 0   Unnamed: 0        113999 non-null  int64  
- 1   track_id          113999 non-null  object 
- 2   artists           113999 non-null  object 
- 3   album_name        113999 non-null  object 
- 4   track_name        113999 non-null  object 
- 5   popularity        113999 non-null  int64  
- 6   duration_ms       113999 non-null  int64  
- 7   explicit          113999 non-null  bool   
- 8   danceability      113999 non-null  float64
- 9   energy            113999 non-null  float64
- 10  key               113999 non-null  int64  
- 11  loudness          113999 non-null  float64
- 12  mode              113999 non-null  int64  
- 13  speechiness       113999 non-null  float64
- 14  acousticness      113999 non-null  float64
- 15  instrumentalness  113999 non-null  float64
- 16  liveness          113999 non-null  float64
- 17  valence           113999 non-null  float64
- 18  tempo             113999 non-null  float64
- 19  time_signature    113999 non-null  int64  
- 20  track_genre       113999 non-null  object 
-dtypes: bool(1), float64(9), int64(6), object(5)
-memory usage: 18.4+ MB
-```
-
-```python
-df.isnull().sum()
-```
-
-**Salida:**
-
-*(Todos los valores son 0)*
-
-```python
-df.duplicated().sum()
-```
-
-**Salida:** `np.int64(0)`
-
-> Viene sin duplicados.
-
----
-
-## **3. VISUALIZACIÓN VARIABLE POR VARIABLE**
-
-```python
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-df_seleccion = df[["artists", "album_name","track_name","popularity",
-                   "duration_ms","explicit","danceability",
-                   "energy", "loudness", "key", "mode","speechiness",
-                   "acousticness","instrumentalness","liveness",
-                   "valence","tempo","time_signature","track_genre"]]
-
-# Iteramos sobre el DataFrame seleccionado
-for col in df_seleccion.columns:
-    # IMPORTANTE: Validar tipo usando el DataFrame seleccionado
-    tipo = df_seleccion[col].dtype
-
-    plt.figure(figsize=(7, 4))
-
-    # CASO 1: int64 u object -> Gráfico de barras (conteo de frecuencias)
-    if tipo == 'int64' or tipo == 'object':
-        # SOLUCIÓN: Si hay demasiados valores únicos, graficamos solo el Top 10
-        top_valores = df_seleccion[col].value_counts().head(10)
-
-        # Usamos los datos filtrados del Top 10 para que cargue instantáneamente
-        sns.countplot(
-            x=df_seleccion[df_seleccion[col].isin(top_valores.index)][col],
-            order=top_valores.index,
-            palette='viridis'
-        )
-
-        # Rotamos las etiquetas del eje X para que los nombres largos no se encimen
-        plt.xticks(rotation=45, ha='right')
-        plt.title(f'Top 10 Frecuencias de {col} ({tipo}) - Barras')
-        plt.xlabel(col)
-        plt.ylabel('Frecuencia')
-
-    # CASO 2: float64 -> Histograma (distribución de valores continuos)
-    elif tipo == 'float64':
-        sns.histplot(df_seleccion[col].dropna(), kde=True, color='skyblue', bins=20)
-        plt.title(f'Distribución de {col} ({tipo}) - Histograma')
-        plt.xlabel(col)
-        plt.ylabel('Frecuencia')
-
-    # CASO 3: bool -> Gráfico de tarta (proporción de True/False)
-    elif tipo == 'bool':
-        conteo = df_seleccion[col].value_counts()
-        plt.pie(conteo, labels=conteo.index, autopct='%1.1f%%', colors=['#4CAF50', '#FF5722'], startangle=90)
-        plt.title(f'Proporción de {col} ({tipo}) - Tarta')
-
-    plt.tight_layout()
-    plt.show()
-```
-
-**Salida (resumida):**
-
-Se generaron gráficos individuales para cada variable:
-
-- **Variables categóricas / enteras (Top 10 frecuencias):** `artists`, `album_name`, `track_name`, `popularity`, `duration_ms`, `key`, `mode`, `time_signature`, `track_genre`.
-- **Variables continuas (Histogramas):** `danceability`, `energy`, `loudness`, `speechiness`, `acousticness`, `instrumentalness`, `liveness`, `valence`, `tempo`.
-- **Variable booleana (Tarta):** `explicit`.
-
-**Observaciones destacadas:**
-
-- La popularidad se distribuye mayormente entre 0 y 80, con un pico importante en 0 (canciones sin popularidad registrada).
-- Los géneros más frecuentes en el Top 10 son: `acoustic`, `afrobeat`, `alt-rock`, `alternative`, `ambient`, `anime`, `black-metal`, `bluegrass`, `blues`, `brazil`.
-- La duración de las pistas se concentra entre 150,000 y 250,000 ms.
-- La mayoría de las canciones no son explícitas.
-- El compás más común es 4/4 (`time_signature` = 4).
-- La tonalidad más común es 0 (C), 1 (C♯/D♭), y 2 (D).
-
----
-
-## **4. COMPARACIÓN DE VARIABLES CON MAPA DE CALOR**
-
-```python
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-# 1. Filtrar solo las columnas numéricas de tu selección
-df_numerico = df_seleccion.select_dtypes(include=[np.number])
-
-# 2. Calcular la matriz de correlación
-matriz_correlacion = df_numerico.corr()
-
-# 3. Configurar el tamaño del gráfico
-plt.figure(figsize=(12, 10))
-
-# 4. Dibujar el mapa de calor
-sns.heatmap(
-    matriz_correlacion,
-    annot=True,
-    fmt=".2f",
-    cmap="coolwarm",
-    vmin=-1, vmax=1,
-    linewidths=0.5
-)
-
-# 5. Personalizar títulos
-plt.title('Mapa de Calor: Correlación de Variables Numéricas con Popularidad', fontsize=16, pad=20)
-plt.xticks(rotation=45, ha='right')
-plt.yticks(rotation=0)
-
-plt.tight_layout()
-plt.show()
-```
-
-**Salida:**
-
-![Mapa de Calor - Correlación de Variables Numéricas con Popularidad](imagenes/heatmap.png)
-
-**Hallazgos del mapa de calor:**
-
-- **Popularidad vs. Loudness:** correlación negativa moderada (~ -0.02), prácticamente nula.
-- **Energy vs. Loudness:** correlación positiva fuerte (~ 0.76), lo cual es esperable (canciones más enérgicas suelen ser más ruidosas).
-- **Energy vs. Acousticness:** correlación negativa fuerte (~ -0.73), las canciones acústicas tienden a tener baja energía.
-- **Danceability vs. Valence:** correlación positiva moderada (~ 0.47).
-- **Popularity** presenta correlaciones débiles con todas las variables numéricas (< 0.1 en valor absoluto), lo que sugiere que la popularidad es difícil de predecir linealmente a partir de estas características.
-
----
-
-## **5. VISUALIZACIÓN**
-
-### 5.1 Top 15 Géneros con Mayor Popularidad Promedio
-
-```python
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-# 1. Calcular la popularidad promedio por género y seleccionar los 15 más altos
-top_generos_populares = (
-    df_seleccion.groupby('track_genre')['popularity']
-    .mean()
-    .sort_values(ascending=False)
-    .head(15)
-    .index
-)
-
-# 2. Filtrar el DataFrame para quedarnos solo con esos 15 mejores géneros
-df_top_generos = df_seleccion[df_seleccion['track_genre'].isin(top_generos_populares)]
-
-# 3. Configurar el lienzo del gráfico
-plt.figure(figsize=(12, 6))
-
-# 4. Crear el gráfico de barras (ordenado de mayor a menor popularidad promedio)
-sns.barplot(
-    x='popularity',
-    y='track_genre',
-    data=df_top_generos,
-    order=top_generos_populares,
-    palette='viridis',
-    errorbar=None
-)
-
-# 5. Personalizar el gráfico
-plt.title('Top 15 Géneros Musicales con Mayor Popularidad Promedio', fontsize=16, pad=15)
-plt.xlabel('Popularidad Promedio', fontsize=12)
-plt.ylabel('Género de la Canción', fontsize=12)
-
-plt.tight_layout()
-plt.show()
-```
-
-**Salida:**
-
-![Top 15 Géneros con Mayor Popularidad Promedio](imagenes/top_generos_populares.png)
-
-**Conclusión:** El género de música más popular es **pop-film**, seguido de **k-pop** y **chill**.
-
----
-
-### 5.2 Top 15 Géneros con Menor Popularidad Promedio
-
-```python
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-# 1. Calcular la popularidad promedio por género y seleccionar los 15 MÁS BAJOS
-top_generos_menos_populares = (
-    df_seleccion.groupby('track_genre')['popularity']
-    .mean()
-    .sort_values(ascending=True)
-    .head(15)
-    .index
-)
-
-# 2. Filtrar el DataFrame para quedarnos solo con esos 15 géneros
-df_menos_populares = df_seleccion[df_seleccion['track_genre'].isin(top_generos_menos_populares)]
-
-# 3. Configurar el lienzo del gráfico
-plt.figure(figsize=(12, 6))
-
-# 4. Crear el gráfico de barras (ordenado de menor a mayor popularidad promedio)
-sns.barplot(
-    x='popularity',
-    y='track_genre',
-    data=df_menos_populares,
-    order=top_generos_menos_populares,
-    palette='magma',
-    errorbar=None
-)
-
-# 5. Personalizar el gráfico
-plt.title('Top 15 Géneros Musicales con MENOR Popularidad Promedio', fontsize=16, pad=15)
-plt.xlabel('Popularidad Promedio', fontsize=12)
-plt.ylabel('Género de la Canción', fontsize=12)
-
-plt.tight_layout()
-plt.show()
-```
-
-**Salida:**
-
-![Top 15 Géneros con Menor Popularidad Promedio](imagenes/top_generos_menos_populares.png)
-
-**Conclusión:** Los géneros musicales menos populares son **iranian**, seguido de **romance** y **latin**.
-
----
-
-### 5.3 Popularidad Promedio según el Tempo (BPM)
-
-```python
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-# 1. Crear intervalos de tempo de 10 en 10 BPM (ej. de 60 a 200+ BPM)
-bins = range(60, 210, 10)
-df_seleccion['tempo_rango'] = pd.cut(df_seleccion['tempo'], bins=bins)
-
-# 2. Calcular la popularidad promedio para cada rango de tempo
-tempo_pop = (
-    df_seleccion.groupby('tempo_rango', observed=False)['popularity']
-    .mean()
-    .reset_index()
-)
-
-# 3. Configurar el gráfico
-plt.figure(figsize=(12, 6))
-
-# 4. Crear un gráfico de líneas con puntos para ver la tendencia claramente
-sns.lineplot(
-    x=tempo_pop['tempo_rango'].astype(str),
-    y=tempo_pop['popularity'],
-    marker='o',
-    linewidth=2.5,
-    color='#1DB954'
-)
-
-# 5. Personalizar el diseño
-plt.title('Popularidad Promedio de las Canciones según su Tempo (BPM)', fontsize=16, pad=15)
-plt.xlabel('Rango de Tempo (Beats Per Minute)', fontsize=12)
-plt.ylabel('Popularidad Promedio', fontsize=12)
-plt.xticks(rotation=45)
-plt.grid(axis='y', linestyle='--', alpha=0.7)
-
-plt.tight_layout()
-plt.show()
-```
-
-**Salida:**
-
-![Popularidad Promedio según Tempo](imagenes/tempo_popularidad.png)
-
-**Conclusión:** El rango óptimo de tempo para una popularidad media está entre los **80 y 170 BPM**, con un mayor alcance de popularidad en los **140 BPM**.
-
----
-
-### 5.4 Popularidad Promedio según el Compás (Time Signature)
-
-```python
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-# 1. Calcular la popularidad promedio para cada compás musical
-time_pop = (
-    df_seleccion.groupby('time_signature')['popularity']
-    .mean()
-    .sort_values(ascending=False)
-    .reset_index()
-)
-
-# 2. Configurar el lienzo del gráfico
-plt.figure(figsize=(10, 5))
-
-# 3. Crear el gráfico de barras
-sns.barplot(
-    x='time_signature',
-    y='popularity',
-    data=time_pop,
-    order=time_pop['time_signature'],
-    palette='Blues_r',
-    errorbar=None
-)
-
-# 4. Personalizar el diseño
-plt.title('Popularidad Promedio de las Canciones según su Compás (Time Signature)', fontsize=16, pad=15)
-plt.xlabel('Signatura de Tiempo (Compás)', fontsize=12)
-plt.ylabel('Popularidad Promedio', fontsize=12)
-
-# Añadir etiquetas de valor sobre cada barra
-for index, row in time_pop.iterrows():
-    plt.text(
-        index,
-        row['popularity'] + 1,
-        f"{row['popularity']:.1f}",
-        color='black',
-        ha="center",
-        fontsize=10
-    )
-
-plt.tight_layout()
-plt.show()
-```
-
-**Salida:**
-
-![Popularidad Promedio según Compás](imagenes/time_signature_popularidad.png)
-
-**Conclusión:** El tiempo de compás más popular (descartando el tempo = 0, que es imposible y por lo tanto dato inválido) es el de **4/4**.
-
----
-
-### 5.5 Perfil Acústico del Top de Canciones Populares
-
-```python
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-# 1. Definir qué es una canción "popular" (popularidad >= 75)
-top_canciones = df_seleccion[df_seleccion['popularity'] >= 75]
-
-# 2. Seleccionar las variables acústicas que están en la misma escala (0 a 1)
-variables_acusticas = [
-    'danceability', 'energy', 'speechiness',
-    'acousticness', 'instrumentalness', 'liveness', 'valence'
-]
-
-# 3. Calcular el promedio de cada parámetro para este grupo exitoso
-promedios_top = top_canciones[variables_acusticas].mean().sort_values(ascending=False)
-
-# 4. Configurar el gráfico
-plt.figure(figsize=(10, 6))
-
-# 5. Crear el gráfico de barras horizontales
-sns.barplot(
-    x=promedios_top.values,
-    y=promedios_top.index,
-    palette='viridis',
-    errorbar=None
-)
-
-# 6. Personalizar el diseño
-plt.title('Perfil Acústico del Top de Canciones Populares (Escala 0 a 1)', fontsize=15, pad=15)
-plt.xlabel('Valor Promedio (Cercano a 1 es Mayor Presencia)', fontsize=12)
-plt.ylabel('Parámetro Acústico', fontsize=12)
-plt.xlim(0, 1)
-
-# Añadir los valores exactos al final de cada barra
-for index, value in enumerate(promedios_top.values):
-    plt.text(value + 0.02, index, f"{value:.2f}", va='center', fontsize=11, fontweight='bold')
-
-plt.tight_layout()
-plt.show()
-```
-
-**Salida:**
-
-![Perfil Acústico del Top de Canciones Populares](imagenes/perfil_acustico.png)
-
-**Conclusión:** Las canciones más populares (popularidad ≥ 75) tienden a tener:
-
-- **Danceability** alto (~0.65)
-- **Energy** moderada-alta (~0.64)
-- **Valence** moderada (~0.45)
-- **Liveness** bajo (~0.20)
-- **Speechiness** bajo (~0.08)
-- **Acousticness** bajo (~0.25)
-- **Instrumentalness** muy bajo (~0.05)
-
-Esto sugiere que las canciones exitosas son bailables, con energía moderada-alta, positivas (valence), no acústicas, con voces (baja instrumentalidad) y no son en directo.
-
----
-
-## **CONCLUSIONES GENERALES**
-
-1. **Datos limpios:** El dataset contiene 113,999 canciones después de eliminar la única fila con valores nulos (que además tenía popularidad 0). No hay duplicados.
-
-2. **Popularidad difícil de predecir linealmente:** Las correlaciones entre `popularity` y las variables numéricas son muy débiles (< 0.1 en valor absoluto), lo que indica que la popularidad depende de múltiples factores no lineales y probablemente de variables externas (marketing, artista, momento de lanzamiento, etc.).
-
-3. **Géneros más populares:** `pop-film`, `k-pop` y `chill` lideran la popularidad promedio.
-
-4. **Géneros menos populares:** `iranian`, `romance` y `latin` tienen las popularidades promedio más bajas.
-
-5. **Tempo óptimo:** Canciones entre 80 y 170 BPM tienden a tener mejor popularidad, con un pico en 140 BPM.
-
-6. **Compás dominante:** El compás 4/4 es el más común y el más popular.
-
-7. **Perfil de canción exitosa:** Las canciones con popularidad ≥ 75 son bailables, energéticas, positivas, no acústicas, con voces y no en directo.
-
----
-
-*Documento generado a partir del notebook `ev1_ML_JohanSoto_FernandaAlcaino.ipynb`*
-
-
---------------------------------------------------------------------------------------------------------
-
-
-# Informe de Modelamiento, Evaluación y Análisis Ético
-## Predicción de Popularidad Musical en Spotify — Notebook ev2
-
-**Autor:** Johan Soto  
-**Dataset:** `spotify_tracks_clean.csv` (proveniente de ev1)  
-**Archivo de salida:** `spotify_tracks_evaluated.csv`  
-**Modelo final:** XGBoost + Target Encoding + umbral optimizado por F2 (0.386)
-
----
-
-## Tabla de contenidos
-
-1. Comprensión del problema de negocio y KPIs
-2. Configuración del entorno
-3. Carga y verificación de calidad del dataset
-4. Síntesis del EDA y sesgos identificados
-5. Cuantificación de la prevalencia desigual por género
-6. Ingeniería de características
-7. Partición estratificada
-8. Target Encoding para artistas y álbumes
-9. Imputación y escalamiento
-10. Estrategia de balanceo
-11. Optimización del umbral de decisión
-12. Evaluación global en test
-13. Matriz de confusión
-14. Análisis desagregado por género
-15. Aprendizaje no supervisado: PCA + K-Means
-16. Interpretación de sesgos
-17. Evaluación ética y mitigación
-18. Comparación y conclusiones
-19. Exportación de resultados
-
----
-
-## 1. Comprensión del problema de negocio y KPIs
-
-### Contexto
-La industria musical opera bajo alta incertidumbre respecto al éxito comercial de una canción. Plataformas como Spotify reciben miles de lanzamientos diarios y los sellos deben decidir en qué pistas invertir presupuesto promocional antes de conocer su desempeño real.
-
-El dataset contiene características acústicas objetivas (energía, bailabilidad, valence, tempo, etc.), metadatos del artista y del álbum, y la variable `popularity` en escala 0-100. La pregunta de negocio es: **¿es posible anticipar, solo con información disponible al momento del lanzamiento, si una canción alcanzará un umbral de popularidad relevante?**
+## 1. Problema de negocio y objetivos
+
+### Problema
+La industria musical es un mercado saturado: miles de canciones se publican cada día en Spotify y los sellos
+invierten en promoción sin certeza de éxito. Cada canción promocionada que no despega es **presupuesto perdido**
+(falso positivo) y cada hit que no se promocionó es **oportunidad perdida** (falso negativo).
 
 ### Objetivo general
-Construir y comparar modelos de ML que estimen la probabilidad de que una canción se convierta en éxito comercial, definido como `popularity >= 50` (≈ percentil 75 de la distribución).
+Construir un modelo de Machine Learning que estime la probabilidad de que una canción sea un hit, usando **solo
+información disponible al momento del lanzamiento**, para priorizar la inversión promocional.
 
 ### Objetivos específicos
-- Comparar Random Forest, XGBoost y Regresión Logística en la predicción de hits.
-- Identificar segmentos sonoros latentes mediante PCA y K-Means.
-- Evaluar desempeño con métricas apropiadas para clases desbalanceadas y desagregar por género.
-- Analizar sesgos y consideraciones éticas heredadas del EDA de ev1.
+- Preparar y depurar el dataset, eliminando duplicados y fuentes de fuga de información (EV1, EV2).
+- Comparar modelos supervisados (Regresión Logística, Árbol, Random Forest, XGBoost, Votación) y uno no
+  supervisado (PCA + K-Means) (EV2, EV3).
+- Optimizar hiperparámetros y umbral de decisión, y aplicar técnicas de ensamble (EV3).
+- Evaluar la capacidad de generalización con validación cruzada agrupada por artista (EV3).
+- Seleccionar y justificar la solución óptima según los KPIs de negocio (EV3).
+- Cuantificar sesgos y proponer un uso responsable del modelo (EV1–EV3).
 
-### KPIs del proyecto
-
-| KPI | Definición | Meta | Resultado (test) | Estado |
-|---|---|---|---|---|
-| **Recall@Hit** | Hits reales identificados | ≥ 0.70 | **0.8962** | CUMPLE |
-| **PR-AUC** | Área bajo precisión-recall | > 0.2382 (prevalencia) | **0.8487** | CUMPLE |
-| **F1-Score** | Media armónica precision/recall | ≥ 0.60 | **0.7246** | CUMPLE |
-| **F2-Score** | Recall con doble peso | > 0.65 | **0.8186** | CUMPLE |
-| **ROC-AUC** | Discriminación global | ≥ 0.80 | **0.9389** | CUMPLE |
-| **Waste Rate** | Falsos positivos / (FP+TP) | ≤ 0.15 | **0.3918** | NO CUMPLE |
-| **Diversity Score** | Géneros entre hits predichos | ≥ 15 | **103** | CUMPLE |
-| **Brier Score** | Calibración de probabilidades | ≤ 0.10 | **0.0942** | CUMPLE |
-
-> **Nota crítica sobre Waste Rate:** El valor de 39.18% es consecuencia directa de optimizar el umbral con **F2**, que prioriza recall sobre precision. Si el negocio exige Waste Rate ≤ 15%, se debe subir el umbral y reportar el nuevo trade-off recall/waste.
+### Criterio "información disponible al lanzar"
+Una variable entra al modelo solo si (1) se conoce **antes** de publicar la canción y (2) **no contiene la
+popularidad** de otras canciones relacionadas. Cumplen: características de audio, duración, contenido explícito,
+género y número de artistas. **No cumplen:** la popularidad media del álbum o del artista (se calculan con
+reproducciones posteriores). Este criterio es el centro de la corrección de la fuga (Sección 7).
 
 ---
 
-## 2. Configuración del entorno
+## 2. KPIs del proyecto
 
-- **Librerías clave:** scikit-learn ≥ 1.3 (por `TargetEncoder` estable), xgboost ≥ 1.7.
-- `imbalanced-learn` **no es requerido** en esta versión (SMOTE fue reemplazado).
-- `RANDOM_STATE = 42` para reproducibilidad.
+Tabla única (archivo `data/kpis_spotify.csv`), definida en EV1 y verificada con el modelo final en EV3.
+Resultados en el **test de artistas nunca vistos** (XGBoost, umbral 0.55).
+
+| KPI | Qué mide para el negocio | Meta | Resultado | Estado | Lectura |
+|---|---|---|---|---|---|
+| **Recall@Hit** | De cada 100 hits, cuántos detectamos | ≥ 0.70 | **0.713** | ✅ | Se descubren 71 de cada 100 éxitos |
+| **PR-AUC** | Calidad de la lista de candidatos a hit | > 0.50 | **0.630** | ✅ | 2.6× mejor que el azar (0.241) |
+| **F2-Score** | Balance que prioriza no perder hits | > 0.65 | **0.666** | ✅ | Cumple con poco margen |
+| **Waste Rate** | % del presupuesto en canciones que no serán hit | ≤ 0.15 | 0.473 | ❌ | Meta fijada con el modelo con fuga; el azar desperdicia 0.759 |
+| **NDCG@20** | Calidad del orden de una playlist de 20 | > 0.80 | 0.675 | ❌ | El orden fino depende de marketing/playlists, no observables |
+| **Diversity Score** | Géneros distintos en el top-200 promocionado | ≥ 15 | 8 → **25** con re-ranking ✅ | ⚠️ | Sin cupo, el top-200 se concentra; con cupo de 10% por género sube a 25 |
+| **MAE** | Error medio al estimar la popularidad (0–100) | ≤ 10 | 11.8 | ❌ | 32% mejor que predecir siempre la mediana (17.3) |
+| **RMSE** | Penaliza errores grandes | < 12 | 16.8 | ❌ | Errores grandes en artistas desconocidos |
+| **R²** | % de la popularidad explicado **solo por la música** | ≥ 0.45 | 0.095 | ❌ | **Hallazgo:** la música explica ~10%; el resto es contexto |
+
+**Cumplimiento:** 3/9 con la lista sin re-ranking; **4/9** con la solución operativa recomendada (modelo +
+re-ranking con cupo por género, que forma parte de la solución).
+
+**Por qué no se cumplen los demás y por qué no es un fracaso del modelo:**
+- Las metas de EV1 se fijaron antes de descubrir la fuga; con el modelo inflado (PR-AUC 0.85) parecían alcanzables.
+- **Waste ≤ 15% y Recall ≥ 70% son incompatibles** con la información disponible al lanzar: con Waste ≤ 15% el
+  máximo Recall posible es 0.09; para Recall 70% el desperdicio mínimo es 0.46 (Sección 8.6).
+- El **R² bajo responde la pregunta de negocio** del KPI ("¿cuánto del éxito se debe solo a la música?"): poco.
+- **Propuesta:** redefinir Waste Rate como mejora respecto del azar (hoy: −29 puntos porcentuales) y fijar metas de
+  MAE/NDCG con una línea base honesta.
 
 ---
 
-## 3. Carga y verificación de calidad del dataset
+## 3. Fuente de datos
 
-| Métrica | Valor |
+| Elemento | Detalle |
 |---|---|
-| Filas iniciales | 88,732 |
-| Filas utilizables | 88,732 |
-| Eliminadas | 0 |
-| Prevalencia global de hit | **0.2372** |
-| Valores nulos totales | 0 |
+| Dataset original | `Spotify_Tracks_Dataset.csv` (Kaggle), 114.000 filas × 21 columnas, 114 géneros (~1.000 canciones por género) |
+| Dataset limpio (EV1) | `spotify_tracks_clean.csv`: **88.732 canciones únicas**, 133 columnas (género como 114 columnas binarias) |
+| Variable objetivo | `is_hit = 1` si `popularity ≥ 50` (≈ percentil 75). **Prevalencia: 23.7%** |
+| Unidad de agrupación | `artist_primary` (primer artista de la lista): **17.581 artistas** |
+| KPIs | `kpis_spotify.csv` |
 
-**Verificación defensiva:** se validó que las columnas críticas no tuvieran nulos, que `is_hit` estuviera bien formada y que no existieran filas con todas las características acústicas en nulo. El pipeline se detendría antes de entrenar si alguna condición fallara.
-
----
-
-## 4. Síntesis del EDA y sesgos identificados (ev1)
-
-### Hallazgos sobre calidad y estructura
-- El dataset original de 114,000 filas se redujo a **88,732 canciones únicas (22.16%)**, principalmente por consolidación de duplicados por `track_id`. Sin esta consolidación, la misma canción aparecía varias veces y generaba **fuga de datos entre train/test**.
-- `popularity` concentra cerca del **30% de canciones con valor < 20**. El umbral 50 ≈ percentil 75.
-- `duration_ms`, `speechiness` e `instrumentalness` presentan **asimetría positiva**; `loudness` tiene **outliers en la cola inferior**.
-
-### Sesgos identificados y su impacto
-
-1. **Sesgo de muestreo por duplicación (corregido).** Se agrupa por `track_id` con codificación multi-etiqueta. Efecto residual: 113 columnas one-hot pueden dominar la importancia.
-2. **Sesgo de recencia.** `popularity` mide reproducciones recientes; canciones históricas no puntúan alto.
-3. **Sesgo de retroalimentación positiva (efecto Mateo).** Canciones promocionadas acumulan popularidad → el modelo aprende a detectar "canciones con presupuesto de marketing", no potencial intrínseco.
-4. **Homogeneización cultural.** Géneros de nicho tienen tasas base extremadamente bajas → el modelo amplifica esa tendencia.
-5. **Prevalencia desigual por género (cuantificada en §5).**
+`popularity` es un índice 0–100 calculado por Spotify a partir del **número de reproducciones y su recencia**: mide
+consumo reciente, no calidad musical. El diccionario completo de variables está en el [Anexo A](#a-diccionario-de-datos).
 
 ---
 
-## 5. Cuantificación de la prevalencia desigual por género
+## 4. Metodología CRISP-DM y herramientas
 
-### Géneros con MENOR tasa de hit
+| Fase CRISP-DM | Qué hicimos | Entrega |
+|---|---|---|
+| 1. Comprensión del negocio | Problema de inversión promocional, objetivos, KPIs | EV1 |
+| 2. Comprensión de los datos | EDA, calidad, duplicados, sesgos | EV1 |
+| 3. Preparación de los datos | Limpieza, multietiqueta, ingeniería de variables, **partición por artista**, pipeline sin fuga | EV1, EV2 |
+| 4. Modelado | LR, Árbol, RF, XGBoost, Votación; PCA + K-Means; regresión de popularidad | EV2, EV3 |
+| 5. Evaluación | CV K=5 agrupada, ablación, sesgos, KPIs, matriz de decisión | EV2, EV3 |
+| 6. Despliegue | Modelo serializado + umbral + política de uso responsable | EV3 |
 
-| Género | Total | Hits | Hit rate |
+| Herramienta | Uso |
+|---|---|
+| Google Colab / Jupyter | Notebooks ejecutables con documentación Markdown |
+| Git / GitHub | Control de versiones del equipo |
+| pandas, NumPy | Manipulación de datos |
+| Matplotlib, Seaborn | Visualización |
+| scikit-learn 1.6.1 | Pipelines, validación cruzada, Random Forest, Regresión Logística, PCA, K-Means, métricas |
+| XGBoost 3.4.1 | Modelo de boosting |
+| joblib | Serialización del modelo y puntos de guardado de cálculos pesados |
+
+---
+
+## 5. Estructura del proyecto y reproducibilidad
+
+```
+MachineLearningSpotifyTracks/
+├── README.md                          ← este informe
+├── requirements.txt
+├── data/
+│   ├── Spotify_Tracks_Dataset.csv     ← original
+│   ├── spotify_tracks_clean.csv       ← salida de EV1 (entrada de EV2 y EV3)
+│   ├── kpis_spotify.csv
+│   └── spotify_tracks_evaluated.csv   ← salida de EV2
+├── notebooks/
+│   ├── ev1_ML_EDA_JohanSoto.ipynb
+│   ├── ev2_ML_Modelo_JohanSoto.ipynb
+│   └── ev3_ML_Optimizacion_JohanSoto.ipynb
+├── models/
+│   ├── ev3_modelo_final.joblib        ← pipeline ganador + umbral
+│   └── cache_ev3/                     ← puntos de guardado de EV3
+├── images/                            ← figuras generadas por EV2/EV3 (ev2_*.png, ev3_*.png)
+├── imagenes/                          ← figuras de EV1 y de la versión original de EV2
+└── reports/                           ← tablas de resultados en CSV (ev2_*.csv, ev3_*.csv)
+```
+
+**Cómo reproducir:**
+1. `pip install -r requirements.txt` (scikit-learn ≥ 1.4, xgboost ≥ 2.1.4, pandas, matplotlib, seaborn, joblib).
+2. Ejecutar en orden **EV1 → EV2 → EV3** con *Restart & Run All*. EV2 y EV3 leen `spotify_tracks_clean.csv`
+   desde `../data/` (función `ubicar()`, que también busca en la carpeta actual y en `/content` de Colab).
+3. Tiempos aproximados en CPU estándar: EV2 ≈ 10–15 min; EV3 ≈ 40–60 min la primera vez.
+4. EV3 guarda cada paso pesado en `models/cache_ev3/`: **si el entorno se reinicia, volver a ejecutar retoma desde
+   el último paso guardado**. En Colab, ejecutar desde una carpeta de Google Drive para conservar los guardados.
+   `BORRAR_CACHE = True` recalcula todo desde cero.
+5. Semilla fija (`RANDOM_STATE = 42`) en particiones, modelos y búsquedas. El modelo exportado se recarga y se
+   verifica que reproduce exactamente las predicciones.
+
+---
+
+## 6. EV1 — Comprensión y preparación de datos (resumen)
+
+### 6.1 Calidad de los datos
+| Problema | Evidencia | Decisión |
+|---|---|---|
+| Nulos | 1 fila sin `artists`, `album_name` ni `track_name` (popularidad 0) | Eliminada |
+| Duplicados por género | `df.duplicated()` = 0, pero miles de `track_id` repetidos: la misma canción aparecía una vez por cada género | **Agrupar por `track_id`** y convertir el género en 114 columnas binarias (multietiqueta) |
+| Registros inválidos | `time_signature` fuera de 3–7 y `tempo` = 0 | Filtrados |
+| Resultado | 114.000 → **88.732 canciones únicas** | `spotify_tracks_clean.csv` |
+
+> **Corrección respecto al README anterior:** decía "no hay duplicados". Es cierto solo para duplicados exactos;
+> por `track_id` había miles, y fueron la primera fuente de fuga detectada (la misma canción en train y test).
+
+**¿Por qué multietiqueta y no una fila por género?** Con una fila por género, una canción en 5 géneros pesaba 5
+veces más en el entrenamiento y podía quedar a la vez en train y test (fuga). Con ~88 mil filas y ~135 columnas
+hay más de 600 filas por columna, sin riesgo de maldición de la dimensionalidad.
+
+### 6.2 Hallazgos del EDA
+
+![Mapa de calor de correlaciones](imagenes/heatmap.png)
+
+- **Ninguna variable de audio se correlaciona linealmente con la popularidad** (|r| < 0.1). Primera señal de que
+  el éxito depende de factores externos al sonido. Las relaciones fuertes son entre variables de audio
+  (energía–loudness 0.76; energía–acousticness −0.73).
+
+![Géneros con mayor popularidad](imagenes/top_generos_populares.png)
+![Géneros con menor popularidad](imagenes/top_generos_menos_populares.png)
+
+- **El género es la gran diferencia:** pop-film, k-pop y chill lideran; iranian, romance y otros géneros de nicho
+  tienen popularidad casi nula. Esto anticipa el sesgo de género que se confirmó en EV3.
+
+![Perfil acústico de las canciones populares](imagenes/perfil_acustico.png)
+
+- Las canciones con popularidad ≥ 75 son bailables (~0.65), enérgicas (~0.64), con voz y no en vivo.
+
+![Popularidad según tempo](imagenes/tempo_popularidad.png)
+![Popularidad según compás](imagenes/time_signature_popularidad.png)
+
+- Tempo favorable entre 80 y 170 BPM; compás 4/4 dominante.
+
+![Popularidad según duración](imagenes/ev1_duracion_popularidad.png)
+
+- **Duración:** la popularidad sube hasta ~3.5–4.5 minutos y cae en canciones más largas. Esto justificó las
+  variables `duration_min`, `is_short` e `is_long` de EV2.
+
+![Contenido explícito vs popularidad](imagenes/ev1_explicit_popularidad.png)
+
+- **Contenido explícito:** popularidad promedio 36.5 frente a 32.9 en canciones no explícitas. Esto justificó la
+  interacción `explicit_x_dance`.
+
+### 6.3 Sesgos identificados en EV1
+1. **Muestreo por duplicación** (corregido con la agrupación por `track_id`).
+2. **Recencia:** `popularity` premia lo escuchado hoy; castiga catálogo histórico valioso.
+3. **Retroalimentación positiva (efecto Mateo):** lo ya promocionado acumula reproducciones y vuelve a parecer "hit".
+4. **Homogeneización cultural:** géneros de nicho con poca exposición tienen tasas de hit cercanas a 0.
+
+---
+
+## 7. EV2 — Modelamiento, la fuga de datos y su corrección (resumen)
+
+### 7.1 Versión original de EV2 (evaluada en la EP2)
+- Ingeniería de variables: `duration_min`, `is_short`, `is_long`, `n_artists`, `energy_x_dance`,
+  `valence_x_energy`, `explicit_x_dance`, cada una justificada por el EDA.
+- **Balanceo:** `class_weight` / `scale_pos_weight` en lugar de SMOTE, porque SMOTE sobre columnas one-hot crea
+  canciones imposibles (`genre_rock = 0.5`, `genre_pop = 0.5`). *(Destacado por el docente.)*
+- **Target Encoding** de artista y álbum (`artist_te`, `album_te`) y split aleatorio estratificado por género.
+- Umbral optimizado por F2 en validación. Resultado: **XGBoost PR-AUC 0.849, ROC-AUC 0.939, Recall 0.896**.
+
+### 7.2 La retroalimentación: "el ROC-AUC de 0,94 es optimista"
+El docente observó que `album_te` (popularidad media de **las otras canciones del mismo álbum**) (1) filtra
+información, porque con un split aleatorio canciones del mismo álbum y artista quedaban en train y test, y (2) **no
+existe al momento del lanzamiento**. También pidió cifras para las afirmaciones, una sola tabla de KPIs y rutas
+reproducibles.
+
+### 7.3 ¿Qué es la fuga de datos y dónde estaba?
+**Fuga de datos** = el modelo usa, durante la evaluación, información que no tendría en la vida real. El resultado
+se ve excelente en el notebook y falla en producción. Encontramos **tres fuentes**:
+
+| Fuente de fuga | Mecanismo | Evidencia |
+|---|---|---|
+| **Artistas compartidos** | Con split aleatorio, canciones del mismo artista quedan en train y test: el modelo "reconoce" al artista | CV aleatoria infla el PR-AUC de XGBoost en **+0.060** y el de RF en **+0.075** respecto a la CV por artista (EV3) |
+| **Canciones repetidas** | **8.309 canciones** tienen el mismo nombre y artista con otro `track_id` (single y álbum, reediciones): una copia en train y otra en test | Conteo directo en EV2/EV3 |
+| **Target Encoding de álbum** | 3.039 nombres de álbum se repiten entre artistas (compilados, playlists, reediciones: "Mega Hits", "Christmas Songs 2022"). Dentro de un álbum la popularidad es muy homogénea (los compilados de temporada tienen tasa de hit 0 porque son copias), así que la media del álbum **adivina la etiqueta** y solo se conoce después del lanzamiento | Aun con artistas nunca vistos, el TE de álbum sube el PR-AUC **+0.091**; el 21.4% de las canciones del test tiene un nombre de álbum que también está en train |
+
+### 7.4 Cómo se corrigió
+1. **Partición por artista** con `GroupShuffleSplit` (grupo = artista principal): **ningún artista está en train y
+   test** (train: 71.153 canciones / 14.064 artistas; test: 17.579 canciones / 3.517 artistas). Se usa el artista
+   principal para que "A" y "A;B" queden del mismo lado.
+2. **Eliminación del Target Encoding** de álbum (fuga y no disponible al lanzar) y de artista (con artistas nuevos
+   solo devuelve la media global y empeora el resultado: −0.030 de PR-AUC).
+3. **Todo paso que aprende dentro de un `Pipeline`** (imputación, escalamiento y, en la ablación, el TE), para que la
+   validación cruzada no se contamine.
+4. **Selección del modelo en validación, no en test.**
+
+**Prueba: tabla de ablación** (PR-AUC en CV de 3 pliegues sobre train, XGBoost):
+
+| Conjunto de variables | Split aleatorio (como antes) | Split por artista (corregido) | Lectura |
 |---|---|---|---|
-| idm | 966 | 0 | 0.000000 |
-| iranian | 955 | 0 | 0.000000 |
-| gospel | 670 | 0 | 0.000000 |
-| grindcore | 949 | 0 | 0.000000 |
-| tango | 982 | 0 | 0.000000 |
-| romance | 875 | 0 | 0.000000 |
-| detroit-techno | 955 | 5 | 0.005236 |
-| ska | 746 | 5 | 0.006702 |
-| chicago-house | 998 | 8 | 0.008016 |
-| kids | 978 | 8 | 0.008180 |
-| salsa | 988 | 11 | 0.011134 |
-| samba | 630 | 8 | 0.012698 |
-| black-metal | 976 | 13 | 0.013320 |
-| mpb | 773 | 12 | 0.015524 |
-| party | 817 | 13 | 0.015912 |
+| 1. Solo audio (14) | 0.405 | 0.377 | La música sola supera al azar (0.236), pero poco |
+| 2. + Ingeniería (21) | 0.420 | 0.390 | Aporte pequeño (+0.013) |
+| **3. + Género** | 0.680 | **0.626** | **El género aporta +0.236: el mercado pesa más que el sonido** |
+| 4. + Catálogo del artista | 0.709 | 0.629 | No aporta con artistas nuevos (+0.003): **excluido** |
+| 5. + TE artista | 0.781 | 0.598 | Empeora con artistas nuevos: **excluido** |
+| 6. + TE álbum | **0.835** | 0.689 | La cifra "buena" de antes era fuga: **excluido** |
 
-### Géneros con MAYOR tasa de hit
+![Ablación: fuga por tipo de split](images/ev2_ablacion.png)
 
-| Género | Total | Hits | Hit rate |
-|---|---|---|---|
-| pop-film | 631 | 591 | **0.936609** |
-| chill | 966 | 757 | 0.783644 |
-| k-pop | 911 | 685 | 0.751921 |
-| pop | 572 | 413 | 0.722028 |
-| metal | 230 | 166 | 0.721739 |
-| hip-hop | 831 | 542 | 0.652226 |
-| sad | 562 | 365 | 0.649466 |
-| grunge | 857 | 552 | 0.644107 |
-| deep-house | 970 | 569 | 0.586598 |
-| progressive-house | 753 | 436 | 0.579017 |
-| british | 889 | 503 | 0.565804 |
-| edm | 693 | 389 | 0.561328 |
-| metalcore | 714 | 394 | 0.551821 |
-| piano | 781 | 423 | 0.541613 |
-| singer-songwriter | 525 | 282 | 0.537143 |
+**Decisión:** el modelo final usa el **conjunto 3** (audio + ingeniería + género), llamado *set de lanzamiento*.
 
-### Resumen del sesgo
+### 7.5 Resultados de EV2 corregido (test con artistas nunca vistos)
 
-| Métrica | Valor |
-|---|---|
-| Total de géneros | 113 |
-| Géneros con hit rate < 5% | **26 (23.0%)** |
-| Géneros sin ningún hit | **6** |
-| Positivos promedio en test para géneros <5% | **≈ 3.3** |
-
-> Con 1–3 positivos el F1 es altamente inestable; con 0 positivos es imposible obtener F1 > 0. Esto es una **limitación del dato, no del modelo**.
-
----
-
-## 6. Ingeniería de características
-
-| Variable | Justificación |
-|---|---|
-| `duration_min` | La duración no es lineal respecto a popularidad (óptimo 3–4 min) |
-| `is_short` | Captura extremos sin forzar linealidad |
-| `is_long` | Ídem |
-| `n_artists` | Colaboraciones vs solistas tienen patrones distintos |
-| `energy_x_dance` | EDM/reggaetón/pop son altos en ambas |
-| `valence_x_energy` | Perfil clásico de hit pop |
-| `explicit_x_dance` | El contenido explícito modera el efecto de bailabilidad |
-
----
-
-## 7. Partición estratificada
-
-| Conjunto | Tamaño | Hit rate |
-|---|---|---|
-| Train | 70,985 | 0.2370 |
-| Test | 17,747 | 0.2382 |
-
-Estratificación por `genre` para garantizar que las 113 categorías mantengan distribución idéntica entre train y test.
-
-> **Regla de oro aplicada:** imputación, escalamiento y Target Encoding se ajustan **solo con train**; test permanece aislado.
-
----
-
-## 8. Target Encoding para artistas y álbumes
-
-### Justificación
-Las características acústicas no distinguen un hit de artista consolidado de uno emergente con perfil similar. La identidad del artista y del álbum captura exposición, sello, base de seguidores y presupuesto.
-
-### Protecciones aplicadas
-1. **`cv=5`** (out-of-fold): la media objetivo de cada fila se calcula con las otras 4 folds, nunca con la propia fila → evita fuga de información.
-2. **`smooth='auto'`**: regulariza artistas con pocas canciones hacia la media global.
-3. **`artist_count`**: un artista con 50 canciones ≠ uno con 1.
-
-### Resultados
-- `artist_te` ∈ [0.000, 1.000]
-- `album_te` ∈ [0.000, 1.000]
-- Artista con más pistas: **George Jones (200 pistas)**
-
----
-
-## 9. Imputación y escalamiento
-
-- `SimpleImputer(strategy='median')` + `StandardScaler()` ajustados en train.
-- No requerido por RF/XGBoost, pero **indispensable** para Regresión Logística, PCA y K-Means.
-- Shapes finales: **Train (70,985, 138)** | **Test (17,747, 138)**
-
----
-
-## 10. Estrategia de balanceo: `class_weight` en lugar de SMOTE
-
-### Decisión y justificación
-En versiones previas se aplicó SMOTE, con F1 estabilizado en 0.57–0.59 independientemente del modelo. La conclusión es que **el problema no era el desbalance, sino la escasez de señal acústica**.
-
-Además, SMOTE sobre las 113 columnas one-hot genera observaciones sintéticas con valores intermedios (ej. 0.5 en `genre_rock` y 0.5 en `genre_pop`), lo cual **no corresponde a ninguna canción real**.
-
-| Modelo | Estrategia de balanceo |
-|---|---|
-| Random Forest | `class_weight='balanced_subsample'` |
-| XGBoost | `scale_pos_weight` = 3.22 |
-| Regresión Logística | `class_weight='balanced'` |
-
-### Justificación de los tres algoritmos
-
-| Algoritmo | Rol | Fortalezas |
-|---|---|---|
-| **Regresión Logística** | Baseline lineal interpretable | Coeficientes legibles; test de si la relación es monótona |
-| **Random Forest** | Ensemble de bagging | No-linealidades, outliers, alta dimensionalidad; estable en producción |
-| **XGBoost** | Ensemble de boosting | Datasets tabulares desbalanceados; regularización (`subsample`, `colsample_bytree`) |
-
-**Descartados:** KNN (maldición de dimensionalidad), SVM (escalamiento cuadrático), Redes Neuronales (sobre-ingeniería para 88k × 138).
-
----
-
-## 11. Optimización del umbral de decisión
-
-### Procedimiento
-1. 20% de train reservado como validación estratificada.
-2. Barrido del umbral en [0,1] maximizando **F2** (recall con doble peso).
-3. Test permanece aislado.
-
-### Umbrales óptimos encontrados
-
-| Modelo | Umbral (F2) | F2 | F1 |
-|---|---|---|---|
-| Random Forest | **0.336** | 0.8097 | 0.7084 |
-| XGBoost | **0.386** | 0.8183 | 0.7222 |
-| Logistic Regression | **0.399** | 0.7944 | 0.6878 |
-
-![Umbrales optimos encontrados](imagenes/1.png)
-
----
-
-## 12. Evaluación global en test
-
-**Prevalencia base en test:** 0.2382
-
-| Modelo | Umbral | F1 | Recall | Precision | Accuracy | PR-AUC | ROC-AUC | Brier |
-|---|---|---|---|---|---|---|---|---|
-| Random Forest | 0.336 | 0.7187 | 0.8950 | 0.6004 | 0.8331 | 0.8401 | 0.9353 | 0.0904 |
-| **XGBoost** | **0.386** | **0.7246** | **0.8962** | **0.6082** | **0.8377** | **0.8487** | **0.9389** | **0.0942** |
-| Logistic Reg. | 0.399 | 0.6881 | 0.8848 | 0.5629 | 0.8089 | 0.7921 | 0.9174 | 0.1145 |
-
-**Mejor modelo según PR-AUC:** **XGBoost (0.8487)**
-
-### Reporte detallado de XGBoost
-
-| Clase | Precision | Recall | F1-score | Support |
-|---|---|---|---|---|
-| 0 (No hit) | 0.96 | 0.82 | 0.88 | 13,519 |
-| 1 (Hit) | 0.61 | 0.90 | 0.72 | 4,228 |
-| **Accuracy** | | | **0.84** | 17,747 |
-| Macro avg | 0.79 | 0.86 | 0.80 | 17,747 |
-| Weighted avg | 0.88 | 0.84 | 0.85 | 17,747 |
-
----
-
-## 13. Matriz de confusión — XGBoost (umbral 0.386)
-
-| | Pred: No Hit | Pred: Hit |
-|---|---|---|
-| **Real: No Hit** | 11,078 (TN) | 2,441 (FP) |
-| **Real: Hit** | 439 (FN) | 3,789 (TP) |
-
-![Matriz de confusion](imagenes/2.png)
-
-### Interpretación de negocio
-
-| Métrica | Valor | Significado |
-|---|---|---|
-| **Verdaderos negativos** | 11,078 | Canciones correctamente descartadas |
-| **Falsos positivos** | 2,441 | Tasa de desperdicio: **39.18%** (costo presupuestario) |
-| **Falsos negativos** | 439 | Tasa de oportunidad perdida: **10.38%** (costo comercial) |
-| **Verdaderos positivos** | 3,789 | Hits correctamente identificados |
-
----
-
-## 14. Análisis desagregado por género
-
-### Metodología de reporte honesto
-
-| Estado | Criterio | Significado |
-|---|---|---|
-| `ok` | ≥ 10 positivos y ≥ 10 negativos | F1 y PR-AUC interpretables |
-| `insuficiente` | 1–9 positivos | PR-AUC como indicio; F1 no fiable |
-| `sin_positivos` | 0 positivos | Métricas de clase positiva imposibles |
-
-### Distribución por estado
-
-| Estado | Cantidad de géneros |
-|---|---|
-| **ok** | 81 |
-| **insuficiente** | 23 |
-| **sin_positivos** | 9 |
-
-### Géneros con más positivos en test
-
-| Género | n_test | n_pos | hit_rate_test | F1 | Recall | PR-AUC | Estado |
+| Modelo | Umbral F2 | PR-AUC val. | PR-AUC test | ROC-AUC | Recall | Precision | F1 |
 |---|---|---|---|---|---|---|---|
-| chill | 193 | 162 | 0.8394 | 0.928 | 0.994 | 0.945 | ok |
-| k-pop | 182 | 138 | 0.7582 | 0.867 | 0.993 | 0.951 | ok |
-| deep-house | 194 | 119 | 0.6134 | 0.790 | 0.966 | 0.750 | ok |
-| pop-film | 126 | 119 | 0.9444 | NaN | NaN | 0.978 | insuficiente |
-| hip-hop | 166 | 118 | 0.7108 | 0.992 | 0.992 | 1.000 | ok |
-| grunge | 171 | 117 | 0.6842 | 0.878 | 0.983 | 0.917 | ok |
-| british | 178 | 104 | 0.5843 | 0.861 | 0.952 | 0.934 | ok |
-| ambient | 192 | 102 | 0.5312 | 0.778 | 0.961 | 0.792 | ok |
-| anime | 198 | 95 | 0.4798 | 0.722 | 0.968 | 0.848 | ok |
-| emo | 186 | 95 | 0.5108 | 0.803 | 0.968 | 0.895 | ok |
+| Regresión Logística | 0.374 | 0.609 | 0.572 | 0.821 | 0.886 | 0.406 | 0.557 |
+| Random Forest | 0.339 | 0.638 | 0.617 | 0.838 | 0.869 | 0.433 | 0.578 |
+| **XGBoost** | 0.445 | **0.649** | **0.623** | **0.843** | 0.856 | 0.451 | **0.591** |
 
-### Géneros con menos positivos en test
+![Umbral F2 en validación](images/ev2_umbral_f2.png)
 
-| Género | n_test | n_pos | hit_rate_test | F1 | PR-AUC | Estado |
+El umbral que maximiza F2 queda bajo 0.5 en los tres modelos (0.34–0.45): con clases desbalanceadas, el umbral por
+defecto no es una decisión de negocio.
+
+![Matriz de confusión XGBoost EV2](images/ev2_matriz_confusion.png)
+
+Matriz de confusión de XGBoost: 3.628 hits detectados, 612 hits perdidos, 4.410 promociones desperdiciadas
+(**Waste Rate 54.9%**, consecuencia de priorizar recall con F2; EV3 lo reduce).
+
+### 7.6 Otros hallazgos de EV2 corregido
+- **Artistas emergentes: la hipótesis no se confirmó.** Se afirmaba que el modelo subestima a los artistas
+  emergentes. Medido: los artistas con 1 canción tienen **más** hits (29% contra 22%) y el modelo los detecta
+  mejor (recall 0.885 contra 0.843). Los catálogos grandes son sobre todo clásicos, ambient y artistas históricos.
+- **Clusters (PCA + K-Means, K=4):** 10 componentes con 89.2% de varianza; K=4 por interpretabilidad (el silhouette
+  óptimo era k=2).
+
+![Codo y silhouette](images/ev2_codo_silhouette.png)
+![Segmentos sonoros PCA + K-Means](images/ev2_clusters_pca.png)
+
+  Las tasas de hit por cluster son parecidas (0.21–0.30): **no prueban** que el modelo capte
+  "calidad musical"; sirven para auditar si se descarta algún perfil sonoro. *(Conclusión reformulada según la
+  retroalimentación.)*
+- **Regresión de popularidad** (para los KPIs MAE/RMSE/R²): solo música R² 0.086; set de lanzamiento MAE 11.8,
+  RMSE 16.8, R² 0.337 (predecir la mediana da MAE 17.3).
+
+---
+
+## 8. EV3 — Optimización, ensambles, generalización y selección
+
+> Cifras de la ejecución completa con XGBoost 3.4.1 y scikit-learn 1.6.1. Los valores marcados con **†** cambian con
+> el ajuste final contra el sobreajuste (Sección 8.9) y deben actualizarse con la última ejecución del notebook.
+
+### 8.0 Mapa de la rúbrica
+
+| Indicador | Peso | Dónde |
+|---|---|---|
+| IE9 Optimización de hiperparámetros | 20% | 8.3, 8.6 |
+| IE10 Técnicas de ensamble | 30% | 8.4 |
+| IE11 Capacidad de generalización | 20% | 8.8, 8.9 |
+| IE12 Selección de la solución óptima | 30% | 8.11, 8.12 |
+
+### 8.1 Continuidad con EV2
+Mismo código de carga, mismas variables (set de lanzamiento, 135 columnas), misma partición por artista y mismo
+balanceo. **El test de EV3 es exactamente el de EV2 corregido.** Los KPIs de regresión usan los mismos
+hiperparámetros en ambos notebooks, de modo que coinciden.
+
+### 8.2 Protocolo de evaluación sin fuga
+```
+train (71.153, 14.064 artistas)
+ ├── búsqueda de hiperparámetros ...... CV agrupada por artista, 3 pliegues (submuestra 30–50%)
+ ├── CV K=5 agrupada por artista ...... probabilidades fuera de pliegue (OOF) → umbral, auditoría, sobreajuste
+ └── modelo final (100% train)
+test (17.579, 3.517 artistas nunca vistos) → se usa UNA sola vez para confirmar
+```
+- **Umbral elegido con OOF, no con el test.** En la ActividadML de referencia el barrido de umbral se hacía sobre
+  el test, lo que sobreestima el desempeño; aquí se corrigió.
+- **Selección del modelo con métricas de CV**, no del test (evita sesgo de selección).
+
+### 8.3 IE9 — Optimización de hiperparámetros
+**Método:** `RandomizedSearchCV` (los espacios de XGBoost tienen 8 hiperparámetros continuos; una grilla completa
+sería inviable). **Métrica:** PR-AUC (independiente del umbral, adecuada al desbalance). **Validación:**
+`StratifiedGroupKFold(3)` por artista. La configuración base de EV2 se evalúa **en los mismos pliegues**, así que
+el Δ se atribuye solo a los hiperparámetros.
+
+| Modelo | PR-AUC CV base (EV2) | PR-AUC CV optimizado | Δ | Configuraciones probadas |
+|---|---|---|---|---|
+| Random Forest | 0.5949 | 0.5975 | +0.0026 | 10 |
+| XGBoost | 0.6145 | 0.6156 | +0.0010 | 20 |
+
+![Búsqueda de hiperparámetros](images/ev3_ie9_busqueda.png)
+![Sensibilidad de XGBoost](images/ev3_ie9_sensibilidad_xgb.png)
+
+**Lectura:** la mejora es pequeña (empate técnico). El techo lo pone la información disponible, no los
+hiperparámetros. **Problema detectado:** al elegir solo por el máximo PR-AUC, Random Forest seleccionó
+`min_samples_leaf=1` (PR-AUC de train 0.998), es decir, la búsqueda **premió la memorización**. La corrección
+(regla de 1σ con control de brecha) está en la Sección 8.9.
+
+La **mayor ganancia de optimización vino del umbral** (Sección 8.6): pasar de 0.50 al umbral de negocio redujo el
+Waste Rate de XGBoost de 50.3% a 47.3% en test.
+
+### 8.4 IE10 — Técnicas de ensamble
+
+| Técnica | Modelo | Qué problema ataca |
+|---|---|---|
+| Referencia | Árbol de Decisión | Mide cuánto aporta ensamblar |
+| **Bagging** | Random Forest | Varianza: promedia árboles entrenados con muestras distintas |
+| **Boosting** | XGBoost | Sesgo: cada árbol corrige el error del anterior, con regularización |
+| **Votación suave** | RF + XGB | Combina errores poco correlacionados |
+
+**Comparación lado a lado (test, umbral 0.50):**
+
+| Modelo | Precision | Recall | F1 | PR-AUC | ROC-AUC | FN (hits perdidos) | FP (promoción perdida) |
+|---|---|---|---|---|---|---|---|
+| Árbol de Decisión | 0.671 | 0.241 | 0.355 | 0.384 | 0.632 | 3.219 | 500 |
+| Regresión Logística | 0.461 | 0.779 | 0.579 | 0.572 | 0.821 | 936 | 3.871 |
+| Random Forest | 0.636 | 0.434 | 0.516 | 0.619 | 0.838 | 2.402 | 1.050 |
+| XGBoost | 0.497 | 0.780 | 0.607 | 0.631 | 0.847 | 934 | 3.343 |
+| Votación RF+XGB | 0.580 | 0.612 | 0.595 | 0.631 | 0.847 | 1.647 | 1.877 |
+
+![Comparación de modelos](images/ev3_comparacion_umbral05.png)
+![Matrices de confusión con umbral 0.50](images/ev3_matrices_umbral05.png)
+
+**Aporte del ensamble medido en dinero.** Como 0.50 no es un umbral de negocio, la comparación justa es: *para
+descubrir el 70% de los hits, ¿qué parte del presupuesto se desperdicia?* (leído en la curva PR del test):
+
+| Árbol | Regresión Logística | Random Forest | **XGBoost** | Votación | Azar |
+|---|---|---|---|---|---|
+| 74.0% | 50.4% | 47.1% | **46.1%** | 46.1% | 75.9% |
+
+Los ensambles ahorran **~28 puntos de presupuesto** frente al árbol simple. Además, el árbol es **inestable**: su
+Recall varía mucho entre pliegues de la CV (σ = 0.092, el único modelo sobre el límite de 0.05).
+
+### 8.5 Curvas ROC y Precision-Recall
+
+![Curvas ROC y PR](images/ev3_curvas_roc_pr.png)
+
+La curva PR es la relevante para el negocio: su eje Y es `1 − Waste Rate`. La zona sombreada (Waste ≤ 15%) solo se
+alcanza con Recall muy bajo: esa es la prueba gráfica del conflicto entre KPIs.
+
+### 8.6 Umbral óptimo (maximizar Recall bajo restricción)
+Se compararon cuatro políticas sobre las probabilidades OOF (XGBoost):
+
+| Política | Umbral | Recall test | Waste test | Hits perdidos | Promociones perdidas |
+|---|---|---|---|---|---|
+| Por defecto | 0.50 | 0.780 | 0.503 | 934 | 3.343 |
+| Máx F2 (política de EV2) | 0.35 | 0.905 | 0.576 | 401 | 5.208 |
+| Máx Recall con Waste ≤ 15% (meta original) | 0.93 | **0.083** | 0.142 | 3.890 | 58 |
+| **Recall ≥ 70% con mínimo Waste (oficial)** | **0.55** | **0.713** | **0.473** | 1.216 | 2.709 |
+
+![Barrido de umbral](images/ev3_barrido_umbral.png)
+![Matrices de confusión con umbral óptimo](images/ev3_matrices_umbral_opt.png)
+
+**Decisión y por qué cambió:** la primera versión de EV3 usaba "Waste ≤ 15%", pero con artistas nuevos esa regla
+solo detecta el 8% de los hits: sería inútil. Se adoptó la regla de la ActividadML: **garantizar el KPI de Recall
+(≥ 70%) gastando lo mínimo**. Así se cumple el KPI principal y el desperdicio queda 29 puntos bajo el azar.
+
+### 8.7 Feature importance (RF + XGB + permutación) y ablación
+
+![Importancia de variables](images/ev3_feature_importance.png)
+
+| Método | Top 3 | Sesgo del método |
+|---|---|---|
+| Random Forest (Gini) | acousticness, loudness, liveness | Favorece variables continuas: reparte la importancia entre las variables de audio |
+| XGBoost (Gain) | genre_pop-film, genre_chill, genre_k-pop | Se concentra en pocas variables muy informativas |
+| **Permutación (test)** | genre_pop-film, energy, loudness | Árbitro: mide la caída real de PR-AUC en datos no vistos |
+
+**Importancia por bloques** (permutando bloques completos en test, XGBoost):
+
+| Bloque | % de la importancia |
+|---|---|
+| **Género (114 columnas)** | **76.9%** |
+| Acústicas (14) | 17.8% |
+| Ingeniería (7) | 5.3% |
+
+![Importancia por bloques](images/ev3_importancia_bloques.png)
+
+**Ablación "música vs. contexto"** (test, artistas nuevos):
+
+| Variante | PR-AUC | R² popularidad | MAE |
+|---|---|---|---|
+| 1. Solo música | 0.420 | **0.095** | 15.6 |
+| **2. Lanzamiento (+ género), oficial** | **0.631** | 0.337 | 11.8 |
+| 3. + Catálogo (excluido) | 0.631 | 0.340 | 11.8 |
+| 4. + TE artista/álbum (excluido, fuga) | 0.722 | 0.668 | 9.3 |
+
+![Ablación](images/ev3_ablacion.png)
+
+**Insight de negocio:** el modelo predice principalmente **en qué mercado compite la canción** (género), no **cómo
+suena**. Traducción a acciones: el género define la estrategia de playlist y canal; el audio (energía, loudness,
+duración) es una señal secundaria útil para elegir el single dentro de un mismo género.
+
+### 8.8 IE11 — Auditoría estadística con validación cruzada K=5
+`StratifiedGroupKFold(5)` agrupado por artista. Criterio de estabilidad: σ ≤ 0.05.
+
+| Modelo | PR-AUC por pliegue | Media | σ | Recall media | σ Recall | Estabilidad |
 |---|---|---|---|---|---|---|
-| kids | 196 | 1 | 0.0051 | NaN | 0.012 | insuficiente |
-| chicago-house | 200 | 0 | 0.0000 | NaN | NaN | sin_positivos |
-| grindcore | 190 | 0 | 0.0000 | NaN | NaN | sin_positivos |
-| gospel | 134 | 0 | 0.0000 | NaN | NaN | sin_positivos |
-| black-metal | 195 | 0 | 0.0000 | NaN | NaN | sin_positivos |
-| iranian | 191 | 0 | 0.0000 | NaN | NaN | sin_positivos |
-| idm | 193 | 0 | 0.0000 | NaN | NaN | sin_positivos |
-| romance | 175 | 0 | 0.0000 | NaN | NaN | sin_positivos |
-| samba | 126 | 0 | 0.0000 | NaN | NaN | sin_positivos |
-| tango | 197 | 0 | 0.0000 | NaN | NaN | sin_positivos |
+| Árbol de Decisión | 0.391 · 0.385 · 0.392 · 0.402 · 0.397 | 0.393 | 0.006 | 0.874 | **0.092** | ⚠️ inestable |
+| Regresión Logística | 0.561 · 0.587 · 0.620 · 0.614 · 0.562 | 0.589 | 0.025 | 0.709 | 0.019 | ✅ |
+| Random Forest | 0.599 · 0.621 · 0.651 · 0.634 · 0.604 | 0.622 | 0.019 | 0.714 | 0.033 | ✅ |
+| **XGBoost** | 0.613 · 0.634 · 0.659 · 0.648 · 0.623 | **0.635** | **0.016** | 0.713 | 0.028 | ✅ |
+| Votación RF+XGB | 0.613 · 0.634 · 0.663 · 0.648 · 0.621 | 0.636 | 0.018 | 0.714 | 0.031 | ✅ |
 
-> **Nota sobre `pop-film`:** aparece con `n_pos=119` pero estado `insuficiente` porque solo tiene **7 negativos**. La regla exige ≥10 positivos **y** ≥10 negativos. Es limitación muestral en la clase negativa, no un fallo del modelo.
+![Estabilidad por pliegue](images/ev3_cv_k5.png)
 
----
+- **Votación vs. XGBoost:** diferencia media +0.0004, IC 95% [−0.0027, +0.0035] → **empate estadístico**.
+- **¿Cuánto inflaba la CV aleatoria?** XGBoost: 0.634 (por artista) vs 0.694 (aleatoria), **+0.060**; RF: +0.075.
+- **CV vs. test:** XGBoost 0.635 vs 0.630; todos los modelos difieren menos de 0.02 → **la CV predice bien el
+  desempeño en datos nunca vistos**.
 
-## 15. Aprendizaje no supervisado: PCA + K-Means
+### 8.9 IE11 — Diagnóstico de sobreajuste (Train vs. CV)
+Criterio de la ActividadML: brecha = métrica_train − métrica_CV; ≥ 0.10 indica sobreajuste.
 
-### PCA sobre 14 características acústicas
+**Ejecución con búsqueda solo por máximo PR-AUC:**
 
-![PCA y kmeans](imagenes/3.png)
+| Modelo | PR-AUC train | PR-AUC CV | Brecha | Diagnóstico |
+|---|---|---|---|---|
+| Árbol de Decisión | 0.458 | 0.393 | 0.064 | ✅ |
+| Regresión Logística | 0.615 | 0.589 | 0.027 | ✅ |
+| Random Forest | 0.998 | 0.622 | **0.376** | ⚠️ |
+| XGBoost | 0.813 | 0.635 | **0.178** | ⚠️ |
+| Votación RF+XGB | 0.976 | 0.636 | 0.340 | ⚠️ |
 
-- **Componentes retenidos:** 10 (varianza acumulada: **89.2%**)
-- Varianza por componente:
-  - PC1: 21.11%
-  - PC2: 11.18%
-  - PC3: 9.96%
-  - PC4: 8.66%
-  - PC5: 7.45%
+![Train vs CV](images/ev3_train_vs_cv.png)
+![Curvas de aprendizaje](images/ev3_curvas_aprendizaje.png)
 
-### Selección de K
+Las curvas de aprendizaje muestran que la brecha de XGBoost **se cierra** con más datos (0.39 → 0.19): el modelo es
+adecuado, pero estaba poco regularizado.
 
-| K | Inercia | Silhouette |
+**Ajuste aplicado:** **regla de 1 desviación estándar** en la búsqueda. Entre las configuraciones cuyo PR-AUC en CV
+está a menos de 1σ de la mejor (estadísticamente equivalentes), se elige la de **menor brecha train − CV**, con
+espacios que incluyen regularización fuerte (`max_depth`, `min_samples_leaf` en RF; `min_child_weight`, `gamma`,
+`reg_lambda` en XGB).
+
+> **Figura pendiente †:** `images/ev3_ie9_desempeno_vs_sobreajuste.png` (desempeño vs. brecha de cada
+> configuración probada, con la configuración elegida marcada) se genera con la versión final del notebook. Agregar
+> aquí después de la última ejecución: `![Desempeño vs sobreajuste](images/ev3_ie9_desempeno_vs_sobreajuste.png)`
+
+**Efecto observado en la prueba de validación del ajuste** †: brecha de XGBoost **0.18 → 0.08 (✅ OK)** con PR-AUC
+en CV prácticamente igual (−0.01, dentro de 1σ). Random Forest mantiene su configuración base (las regularizadas
+perdían demasiado PR-AUC) y sigue con brecha alta: RF memoriza por diseño, pero su CV y su test coinciden (0.622 vs
+0.619), es decir, generaliza.
+
+**Otro hallazgo de medición:** en una versión intermedia que aún usaba Target Encoding, hasta la Regresión
+Logística mostraba PR-AUC de train ≈ 0.99. Era una **auto-fuga del encoder** (al transformar filas de train usaba la
+etiqueta de la propia canción), no memorización. Se corrigió midiendo el train sobre la codificación cruzada y fue
+una segunda razón para retirar el TE.
+
+### 8.10 Sesgos y equidad con evidencia
+
+**Equidad por grupo de géneros** (recall al umbral de negocio, XGBoost):
+
+| Grupo de géneros (por tasa de hit en train) | Tasa de hit real | Recall OOF | Recall test |
+|---|---|---|---|
+| Nicho | 3.5% | 0.041 | **0.018** |
+| Intermedio | 20.6% | 0.389 | 0.418 |
+| Mainstream | 52.3% | 0.905 | **0.919** |
+
+![Equidad por género](images/ev3_equidad_generos.png)
+
+> **Hallazgo crítico:** de cada 100 hits de géneros de nicho, el modelo detecta 2. Un hit de salsa o tango
+> prácticamente nunca sería promocionado. Es el sesgo de **homogeneización cultural** hecho número.
+
+**Artistas emergentes vs. establecidos** (XGBoost, test):
+
+| Catálogo del artista | Tasa de hit real | Recall | Waste Rate |
+|---|---|---|---|
+| 1 canción | 29.1% | 0.730 | 0.435 |
+| 2–10 canciones | 25.8% | 0.733 | 0.432 |
+| > 10 canciones | 22.1% | 0.693 | 0.511 |
+
+![Artistas emergentes](images/ev3_artistas_emergentes.png)
+
+No se subestima a los emergentes: el sesgo relevante es por **género**, no por tamaño del artista.
+
+**Segmentos sonoros (K-Means de EV2):** recall entre 0.67 (electrónica/metal de alta energía) y 0.82 (bailable de
+alta energía). El perfil sonoro afecta menos que el género.
+
+**Diversidad de la lista promocionada y mitigación aplicada:**
+
+| | Géneros en el top-200 | Género dominante | Precisión del top-200 |
+|---|---|---|---|
+| Ranking original | 8 | 41% | 0.955 |
+| **Re-ranking con cupo 10% por género** | **25** | ≤ 10% | 0.890 |
+
+Ganar 17 géneros cuesta 6.5 puntos de precisión: es un *trade-off* explícito y barato.
+
+**Calibración:** la probabilidad media predicha (0.39) supera la tasa real (0.24) porque `scale_pos_weight` infla la
+clase hit. Las probabilidades sirven para **ordenar**, no para decir "esta canción tiene 70% de probabilidad".
+
+### 8.11 IE12 — Selección y justificación de la solución óptima
+**Matriz de decisión** construida **solo con métricas de CV** (sin mirar el test):
+
+| Criterio | Peso | Justificación |
 |---|---|---|
-| 2 | 744,672 | 0.209 |
-| 3 | 672,215 | **0.214** ← óptimo estadístico |
-| 4 | 620,123 | 0.131 |
-| 5 | 583,111 | 0.128 |
-| 6 | 549,386 | 0.144 |
-| 7 | 516,970 | 0.147 |
+| Precisión a Recall 70% (1 − Waste) | 0.30 | Con el recall fijado, gana quien desperdicia menos |
+| PR-AUC | 0.25 | Calidad del ranking, robusta a cambios de presupuesto |
+| Equidad (recall nicho/mainstream) | 0.15 | No amplificar la homogeneización cultural |
+| Estabilidad (σ) | 0.10 | Generalización certificable |
+| Generalización (−brecha) | 0.10 | Penaliza sobreajuste |
+| Interpretabilidad | 0.05 | Auditabilidad ante artistas y regulación |
+| Costo de infraestructura | 0.05 | Operación y reentrenamiento |
 
-**Decisión:** K = 4 como **compromiso entre separación estadística e interpretabilidad**, reconociendo que su silhouette (0.131) es inferior al óptimo estadístico (K=3, 0.214). Es una decisión de diseño, no el resultado del criterio silhouette.
+| Modelo | Precisión CV | PR-AUC CV | σ | Equidad | Brecha | Puntaje † |
+|---|---|---|---|---|---|---|
+| **XGBoost** | **0.539** | 0.635 | 0.016 | 0.045 | 0.178 | **0.706** |
+| Regresión Logística | 0.500 | 0.589 | 0.025 | 0.016 | 0.027 | 0.658 |
+| Votación RF+XGB | 0.536 | 0.636 | 0.018 | 0.051 | 0.340 | 0.598 |
+| Random Forest | 0.515 | 0.622 | 0.019 | 0.106 | 0.376 | 0.581 |
+| Árbol de Decisión | 0.271 | 0.393 | 0.006 | 0.807 | 0.064 | 0.439 |
 
-### Distribución de clusters
+![Radar de decisión](images/ev3_radar_decision.png)
 
-| Conjunto | Cluster 0 | Cluster 1 | Cluster 2 | Cluster 3 |
+**Análisis de sensibilidad:** XGBoost gana con pesos oficiales y con foco comercial; con foco ético o pesos iguales
+gana el árbol, porque predice "hit" para casi todo (equidad alta, pero desperdicia 74%). **Interpretación:** si el
+negocio prioriza desempeño, XGBoost; el árbol no es una alternativa operativa real.
+
+**Por qué XGBoost y no la Votación:** empatan estadísticamente en PR-AUC (IC 95% contiene el 0), pero la votación
+entrena dos modelos (costo ≈7× en tiempo de entrenamiento), hereda el sobreajuste de RF y es menos interpretable. **A igual desempeño, se
+elige la solución más simple.**
+
+**Párrafo ejecutivo (generado por el notebook):**
+> Se recomienda desplegar XGBoost como motor de priorización de lanzamientos. En validación cruzada de 5 pliegues
+> alcanza PR-AUC = 0.635 (±0.016) y, con un umbral de 0.55 que garantiza descubrir al menos el 70% de los hits,
+> desperdicia 46.1% del presupuesto frente al 76% de promocionar al azar. En el test (artistas nunca vistos) confirma
+> Recall = 0.713, Waste Rate = 0.473 y PR-AUC = 0.630; para descubrir el 70% de los hits desperdicia 27.9% menos
+> presupuesto que el árbol simple. Su principal limitación es que la música explica poco del éxito y que favorece a
+> los géneros que la plataforma ya premia: debe usarse como señal complementaria, con cupos de diversidad, cuota para
+> artistas emergentes y revisión humana.
+
+### 8.12 Qué representan las métricas del modelo elegido
+
+| Métrica | Valor | Para el negocio |
+|---|---|---|
+| Recall | 0.713 | Descubre 71 de cada 100 éxitos |
+| Precision | 0.527 | 53 de cada 100 promociones aciertan |
+| Waste Rate | 0.473 | Se pierde el 47% del presupuesto promocional (azar: 76%) |
+| PR-AUC | 0.630 | La lista de candidatos es 2.6× mejor que elegir al azar |
+| ROC-AUC | 0.847 | En 85% de los pares hit/no-hit, el hit recibe mayor puntaje |
+| F2 | 0.666 | Balance que pesa doble no perder hits |
+| NDCG@20 | 0.675 | Orden aceptable dentro de una playlist, no excelente |
+| σ entre pliegues | 0.016 | El desempeño no depende de la muestra |
+
+---
+
+## 9. Registro de errores, ajustes y decisiones
+
+| # | Etapa | Problema detectado | Evidencia | Decisión / corrección | Impacto |
+|---|---|---|---|---|---|
+| 1 | EV1 | Canciones repetidas por género | `track_id` repetidos | Agrupar por `track_id` + multietiqueta | 114.000 → 88.732 filas |
+| 2 | EV2 | SMOTE crea canciones imposibles en el one-hot | F1 estancado en 0.57–0.59 | `class_weight` / `scale_pos_weight` | Sin datos sintéticos inválidos |
+| 3 | EV2 | **Fuga por TE de álbum y split aleatorio** | Retroalimentación EP2; ablación | Split por artista; sin TE; pipeline | PR-AUC 0.85 → 0.63 (honesto) |
+| 4 | EV2 | 8.309 canciones repetidas con otro `track_id` | Conteo nombre + artista | Cubierto por el split por artista | Sin copias entre train y test |
+| 5 | EV2 | TE de artista no sirve con artistas nuevos | −0.030 PR-AUC en ablación | Excluido | Modelo coherente con el caso real |
+| 6 | EV2 | Catálogo del artista no aporta y premia a los grandes | +0.003 PR-AUC | Excluido; solo para auditoría | Menos efecto Mateo |
+| 7 | EV2 | Mejor modelo elegido mirando el test | Revisión | Selección en validación | Sin sesgo de selección |
+| 8 | EV2 | **Error de código:** el modelo final compartía objeto con el de validación | XGBoost: val 0.649 → test 0.506 | `clone()` para cada pipeline | XGBoost test 0.506 → 0.623 |
+| 9 | EV2 | Afirmación "se subestima a emergentes" sin cifras | Retroalimentación EP2 | Medido por tamaño de catálogo | Hipótesis rechazada con datos |
+| 10 | EV2 | Conclusión fuerte sobre clusters | Hit rate 0.21–0.30 | Reformulada con cautela | Coherencia con la evidencia |
+| 11 | EV2 | KPIs del inicio distintos a los verificados; MAE nunca calculado | Retroalimentación EP2 | Tabla única + modelo de regresión | Trazabilidad KPI → código |
+| 12 | EV2/EV3 | Rutas relativas a la carpeta actual | Retroalimentación EP2 | Función `ubicar()` (`../data/`) | Reproducible en local y Colab |
+| 13 | EV3 | Umbral elegido con el test (ActividadML) | Revisión metodológica | Umbral con OOF; test una vez | Estimación honesta |
+| 14 | EV3 | Auto-fuga del TE en métricas de train | LR con PR-AUC train ≈ 0.99 | Train medido sobre codificación cruzada | Diagnóstico de sobreajuste real |
+| 15 | EV3 | Política Waste ≤ 15% inútil sin fuga | Recall máximo 0.08 | Recall ≥ 70% con mínimo Waste | KPI principal cumplido |
+| 16 | EV3 | Comparar modelos solo con su umbral puede ser injusto (probabilidades escalonadas del árbol) | Árbol: σ Recall 0.092 entre pliegues | Comparar además por Waste a Recall 70% en la curva PR | Comparación justa entre modelos |
+| 17 | EV3 | **Búsqueda premiaba la memorización** | RF `min_samples_leaf=1`, brecha 0.38 | Regla de 1σ + espacios regularizados | XGBoost brecha 0.18 → 0.08 † |
+| 18 | EV3 | KPIs de regresión distintos entre EV2 y EV3 | R² 0.090 vs 0.098 | Mismas variables e hiperparámetros | Cifras idénticas en ambos notebooks |
+| 19 | EV3 | El entorno se cerraba tras ~1 hora | Reinicio del kernel | Puntos de guardado (`cacheado`) + menos iteraciones | Reanudable; 2.ª ejecución en segundos |
+| 20 | EV3 | Explicación incorrecta de la fuga del álbum ("los compilados delatan el éxito") | Compilados con tasa de hit 0 | Redacción corregida: la popularidad es homogénea dentro del álbum | Explicación fiel a los datos |
+| 21 | EV3 | Top-200 concentrado en 8 géneros | Diversity 8 < 15 | Re-ranking con cupo 10% | 25 géneros, −6.5 pts de precisión |
+
+---
+
+## 10. Sesgos del modelo: evidencia, mitigación, impacto y precauciones
+
+| Sesgo | Evidencia | Qué hicimos | Impacto si no se controla | Precaución en producción |
 |---|---|---|---|---|
-| Train | 6,588 | 28,738 | 21,083 | 14,576 |
-| Test | 1,674 | 7,128 | 5,255 | 3,690 |
-
-### Perfil acústico por cluster
-
-![clusters](imagenes/4.png)
-
-| Cluster | danceability | energy | acousticness | instrumentalness | valence | tempo | is_hit |
-|---|---|---|---|---|---|---|---|
-| 0 | 0.635 | 0.716 | 0.251 | 0.041 | 0.471 | 121.0 | **0.305** |
-| 1 | 0.671 | 0.686 | 0.286 | 0.052 | 0.671 | 119.3 | 0.248 |
-| 2 | 0.480 | 0.801 | 0.086 | 0.254 | 0.331 | 135.6 | 0.215 |
-| 3 | 0.444 | 0.271 | 0.783 | 0.345 | 0.286 | 110.4 | 0.217 |
-
-### Interpretación de los 4 clusters
-
-> **Nota:** el K-Means se ajustó solo con las 14 features acústicas, no con géneros. Cada cluster es un **segmento sonoro**, no un género; ningún género supera el 10.5% de su cluster.
-
-- **Cluster 0 — Bailable de alta energía** (n=6,588; hit_rate 0.305; 1.29×). Géneros heterogéneos: comedy, emo, dancehall, j-dance, funk, hardcore, hip-hop. La etiqueta "pop/EDM" del diagnóstico previo **no se sostiene**.
-- **Cluster 1 — Bailable de valencia alta** (n=28,738; hit_rate 0.248; 1.05×). Géneros: salsa, forro, kids, disco, afrobeat, k-pop, pagode. La etiqueta "pop" es engañosa: es un segmento **culturalmente amplio**, no pop.
-- **Cluster 2 — Electrónica/metal de alta energía** (n=21,083; hit_rate 0.215; 0.91×). Géneros coherentes: black-metal, drum-and-bass, heavy-metal, hardstyle, minimal-techno.
-- **Cluster 3 — Acústico/instrumental de baja energía** (n=14,576; hit_rate 0.217; 0.92×). Géneros coherentes: new-age, ambient, classical, opera, sleep, tango.
-
-**Lectura:** los clusters 2 y 3 coinciden con sus géneros dominantes; los clusters 0 y 1 son acústicamente distinguibles pero **culturalmente mixtos** (salsa con k-pop, dancehall con emo). Cualquier política de diversidad basada en clusters sonoros puede agrupar géneros distintos y separar canciones del mismo género según su perfil acústico.
+| **Fuga de información** | CV aleatoria +0.06 PR-AUC; TE álbum +0.09 | Split y CV por artista; sin TE; umbral con OOF | Presupuesto decidido con un modelo mucho peor de lo que se cree | Validar siempre con artistas/períodos no vistos; no usar variables posteriores al lanzamiento |
+| **Efecto Mateo** | Música sola R² 0.10; género 77% de la importancia | Ablación y declaración explícita | Se promociona lo que ya era popular; profecía autocumplida | Usar como apoyo, no como filtro; cuota para artistas sin historial |
+| **Homogeneización por género** | Recall nicho 0.02 vs mainstream 0.92 | Equidad como criterio de la matriz; re-ranking con cupo | Catálogo cada vez más uniforme; nicho invisible | Cupo por género en la lista final; reportar el ratio en cada iteración |
+| **Artistas emergentes** | Recall 0.73 (1 canción) vs 0.69 (>10) | Sin TE ni catálogo como variables | Hoy controlado; reaparecería si se agrega historial del artista | Monitorear recall por tamaño de catálogo |
+| **Conflicto de KPIs** | Waste ≤ 15% ⇒ Recall 0.08 | Política explícita y tabla de alternativas | Con umbral 0.50 se desperdiciaría 50% | Documentar el umbral como decisión de negocio; recalcularlo si cambia el presupuesto |
+| **Calibración** | Prob. media 0.39 vs tasa real 0.24 | Uso del umbral, no de la probabilidad cruda | Decisiones con probabilidades sobreestimadas | Calibrar (Platt/isotónica) si se necesitan probabilidades |
+| **Recencia y muestreo** | ~1.000 canciones por género; popularidad reciente | Declarado como limitación | Catálogo histórico subvalorado | Agregar fecha de lanzamiento; reentrenar periódicamente |
+| **Manipulación** | *Stream farming* puede inflar la popularidad | Declarado | Modelo reentrenado con datos contaminados | Auditar anomalías de reproducciones antes de reentrenar |
 
 ---
 
-## 16. Interpretación de sesgos a partir del desempeño observado
+## 11. Ética, privacidad y marco normativo
 
-### Sesgo de retroalimentación positiva
-Los géneros con mayor tasa de hit y mayor F1 (pop, hip-hop, k-pop) coinciden con los que aparecen en playlists oficiales. El modelo aprende a detectar este tipo de canciones con F1 > 0.80 **no porque las features acústicas sean intrínsecamente predictivas**, sino porque las canciones con presupuesto de marketing concentran un perfil sonoro homogéneo. Aplicado a artistas emergentes, la probabilidad se subestima sistemáticamente.
-
-### Sesgo de recencia
-La definición de hit como `popularity >= 50` favorece lanzamientos recientes. El modelo no distingue entre canciones de catálogo valiosas y canciones nuevas con tracción reciente. La tasa de hit del segmento acústico (baja energía) es la más baja, coincidiendo con gran parte del catálogo histórico.
-
-### Homogeneización cultural
-Los 113 géneros no tienen representación uniforme. Un sistema de recomendación basado en este modelo tendería a sobrerrepresentar el cluster de alta dance/energy y a excluir el de alta acousticness/instrumentalness, **reduciendo diversidad**.
-
-### Sesgo de muestreo por género
-RF y XGBoost alcanzan PR-AUC similar (0.8401 vs 0.8487), lo que sugiere **estabilidad entre dos familias de árboles**, pero no demuestra que el modelo no sobreajuste a género. Para evaluarlo habría que comparar el desempeño con y sin las columnas one-hot, o analizar la importancia de variables. Ambos modelos comparten el mismo esquema de entrada y **podrían compartir el mismo sesgo**.
-
----
-
-## 17. Evaluación ética, privacidad y mitigación
-
-### Marco normativo
-- **GDPR / Ley 19.628 (Chile):** regulan la recolección consentida de datos de consumo. El dataset no contiene PII, pero la popularidad se deriva de patrones agregados de usuarios.
-- **EU AI Act:** exige transparencia, gobernanza de datos y mitigación de sesgos en sistemas algorítmicos de recomendación y perfilamiento comercial.
-
-### Riesgos éticos identificados
-
-1. **Invisibilización de artistas emergentes.** El modelo aprende que "artista conocido" = "hit". Si un sello lo usa como filtro previo, los artistas sin historial nunca serán promocionados → círculo del sesgo de retroalimentación.
-2. **Homogeneización sonora.** Los segmentos con mayor probabilidad concentran perfiles específicos. Si todos los sellos usan modelos similares, el catálogo global tiende a la uniformidad.
-3. **Opacidad algorítmica.** El Target Encoding por artista agrava la opacidad al introducir dependencia implícita del historial previo.
-4. **Riesgo de manipulación.** Un sello puede inflar artificialmente su popularidad con stream farming. El modelo puede ser engañado si se actualiza con datos contaminados.
-
-### Recomendaciones de uso responsable
-
-1. **Señal complementaria, no filtro excluyente.** La decisión final debe incorporar criterio humano y cuotas de diversidad.
-2. **Cuota mínima de presupuesto** (≈20%) para artistas sin historial en el dataset.
-3. **Reportar desempeño por género en cada iteración.** Si la brecha mainstream/nicho aumenta, activar revisión de sesgo.
-4. **Documentar y auditar umbrales de decisión.** El umbral F2 implica una política deliberada de priorizar recall sobre precision; debe ser explícita.
-5. **Recalibrar periódicamente**, pero no solo con datos de plataforma: incluir intervenciones promocionales controladas.
-6. **Limitar el Target Encoding por artista** a contextos con historial verificable. Para artistas nuevos, usar mecanismo explícito de "artista desconocido" y reportarlo.
+- **Datos personales:** el dataset no contiene información personal de oyentes. Nombres de artistas, canciones y
+  álbumes son públicos (propiedad intelectual).
+- **Ley 19.628 (Chile) y RGPD (UE):** regulan la recolección de los datos de consumo con los que Spotify calcula la
+  popularidad (consentimiento, finalidad, minimización).
+- **EU AI Act:** un sistema que influye en la inversión que reciben los artistas exige transparencia, gobernanza de
+  datos y mitigación de sesgos. Por eso el modelo se documenta como **apoyo a la decisión**, con criterios auditables.
+- **Riesgos éticos:** invisibilización de géneros de nicho y artistas emergentes; homogeneización sonora si todos los
+  sellos usan modelos similares; opacidad para los artistas; manipulación por granjas de reproducciones.
+- **Pregunta de la defensa EP2: ¿cómo dar más peso a artistas que invierten en publicidad?** Opciones: (1)
+  `sample_weight` al entrenar; (2) una variable de campaña o presupuesto; (3) un umbral distinto para ese segmento;
+  (4) re-ordenar la lista final con `probabilidad × valor del artista`. **Riesgo:** todas amplifican el efecto Mateo;
+  la opción 4 es la más segura porque no altera el modelo y es reversible, y debe ir acompañada de una cuota protegida
+  para artistas sin historial.
 
 ---
 
-## 18. Comparación con versiones previas y conclusiones
+## 12. Conclusiones, limitaciones y recomendaciones para el negocio
 
-### Comparación de desempeño (mismo test)
-
-| Versión | F1 | Recall | Accuracy | PR-AUC |
-|---|---|---|---|---|
-| Inicial (SMOTE + umbral 0.5, sin TE) | 0.5603 | 0.5835 | 0.7818 | no medido |
-| **Actual (class_weight + TE + F2)** | **0.7246** | **0.8962** | **0.8377** | **0.8487** |
-
-> **Nota:** la comparación acumula **tres** cambios simultáneos: (1) SMOTE → class_weight; (2) sin TE → con TE; (3) umbral fijo 0.5 → umbral optimizado con F2. La mejora **no es atribuible a ninguno por separado**.
-
-### Conclusiones del modelamiento
-
-1. **Sobre el techo predictivo.** PR-AUC en test = **0.8487**, muy por encima de la prevalencia base (0.2382). Sin embargo, este desempeño se apoya fuertemente en el Target Encoding de artista y álbum. Si se restringe el modelo a solo características acústicas, el PR-AUC cae significativamente → **la popularidad depende en alta medida de factores no acústicos**: presupuesto de marketing, posición en playlists, seguidores del artista y contexto cultural.
-
-2. **Sobre el balanceo.** El reemplazo de SMOTE por `class_weight` es una decisión motivada por **eliminar observaciones sintéticas inválidas** en columnas one-hot, **no por una mejora de desempeño demostrada** en este notebook. La comparación de §18 mezcla tres cambios y no permite aislar el efecto del esquema de balanceo.
-
-3. **Sobre el Target Encoding.** Mejora la capacidad predictiva y captura información que las features acústicas no pueden representar. Introduce un **riesgo ético** que debe mitigarse con políticas explícitas de uso.
-
-4. **Sobre el umbral.** El umbral óptimo según F2 es **consistentemente inferior a 0.5** (0.336–0.399), reflejando el desplazamiento de probabilidades por el desbalance. La selección de umbral debe ser **parte estándar del pipeline**, no una decisión ad hoc.
-
-5. **Sobre el desempeño por género.** Géneros mainstream alcanzan F1 > 0.80. Géneros de nicho tienen F1 nulo porque tienen **menos de dos positivos en test**. Es limitación del dato, no del modelo, y debe reportarse como tal.
-
-6. **Sobre el aprendizaje no supervisado.** PCA + K-Means identifican **4 segmentos sonoros distintos**. Los segmentos con alta danceability y alta energy concentran la mayoría de los hits. Esto valida que el modelo supervisado captura **estructura sonora real**, no solo sesgo de género nominal.
+### Conclusiones
+1. **Una métrica alta no es un buen modelo si hay fuga.** El PR-AUC bajó de 0.85 a 0.63 al evaluar como en la vida
+   real; la cifra honesta es la única útil para decidir presupuesto.
+2. **El éxito en Spotify depende más del mercado que del sonido.** La música explica ~10% de la popularidad; el
+   género, 77% de la capacidad predictiva.
+3. **Los ensambles aportan valor medible:** para detectar el 70% de los hits, XGBoost desperdicia 46% del presupuesto
+   frente a 74% del árbol simple y 76% del azar.
+4. **La optimización más rentable fue el umbral**, no los hiperparámetros; y la optimización de hiperparámetros
+   aportó sobre todo **generalización** (menor sobreajuste) con el mismo desempeño.
+5. **El modelo es estable y generaliza** (σ = 0.016; CV y test coinciden), pero **no es neutral**: casi no detecta
+   hits de géneros de nicho.
 
 ### Limitaciones
+- Faltan variables de contexto: seguidores, sello, playlists editoriales, fecha de lanzamiento, inversión en marketing.
+- `popularity` mide consumo reciente de la plataforma, no calidad ni valor de catálogo.
+- El dataset es una muestra de ~1.000 canciones por género, no representa el catálogo real.
+- Géneros de nicho con 0–3 hits en test no permiten métricas individuales estables (se agruparon en terciles).
+- Probabilidades no calibradas.
+- Búsqueda de hiperparámetros con iteraciones acotadas por costo computacional.
 
-- Ausencia de variables de contexto: seguidores del artista, sello, playlists de inclusión, fecha de lanzamiento.
-- `popularity` es una medida de plataforma, no refleja necesariamente la calidad musical.
-- El modelo no descuenta el efecto de intervenciones promocionales previas → hereda el sesgo de retroalimentación.
-- Géneros de nicho tienen prevalencia tan baja que no permiten evaluación significativa.
-- El Target Encoding por artista introduce dependencia del historial, limitando su aplicabilidad a artistas nuevos.
+### Recomendaciones para el sello
+1. **Usar XGBoost como priorizador**, con decisión final humana (A&R).
+2. **Umbral documentado** (Recall ≥ 70% con mínimo desperdicio); recalcularlo si cambia el presupuesto, sin reentrenar.
+3. **Re-ranking con cupo por género** (máx. 10%) en la lista final.
+4. **Cuota protegida (~20%)** del presupuesto para artistas sin historial y géneros de nicho.
+5. **Redefinir las metas de KPI** respecto del azar y de una línea base honesta.
+6. **Monitorear** en cada iteración: recall por género, por tamaño de catálogo y diversidad del top-200.
+7. **Recolectar datos de campañas** para separar el efecto marketing del efecto música; reentrenar periódicamente.
 
 ### Líneas futuras
-
-- Incorporación de **embeddings de audio preentrenados** (OpenL3, CLAP) que capturen estructura sonora de mayor nivel.
-- **Grafos de colaboración entre artistas** para propagar información a artistas nuevos y mitigar el sesgo de retroalimentación.
-- **Modelos de recomendación con restricciones de diversidad** explícitas.
-- **Evaluación de impacto contrafactual** para medir el efecto de la promoción sobre la popularidad real, evitando interpretar correlación como causalidad.
+Embeddings de audio preentrenados (CLAP, OpenL3), calibración de probabilidades, stacking con meta-modelo, umbrales
+por grupo de género, grafos de colaboración entre artistas y evaluación contrafactual del efecto de la promoción.
 
 ---
 
-## 19. Exportación de resultados
+## 13. Anexos
 
-**Archivo:** `spotify_tracks_evaluated.csv`  
-**Shape final:** (88,732, 151)
-
-**Columnas nuevas añadidas:**
-
-| Columna | Descripción |
+### A. Diccionario de datos
+| Variable | Descripción |
 |---|---|
-| `prob_xgb_hit` | Probabilidad continua XGBoost |
-| `pred_xgb_hit` | Predicción binaria XGBoost (umbral 0.386) |
-| `prob_rf_hit` | Probabilidad continua Random Forest |
-| `pred_rf_hit` | Predicción binaria RF (umbral 0.336) |
-| `cluster_sonoro` | Etiqueta del cluster K-Means (0–3) |
-| `genre_f1_test` | F1 del género en test |
-| `genre_pr_auc_test` | PR-AUC del género en test |
-| `genre_n_pos_test` | Conteo de positivos del género en test |
-| `genre_estado_test` | Estado (`ok` / `insuficiente` / `sin_positivos`) |
+| `track_id` | ID de Spotify de la pista |
+| `artists` | Artistas que interpretan la pista; si hay varios, separados por `;` |
+| `album_name` | Álbum en el que aparece la pista |
+| `track_name` | Nombre de la pista |
+| `popularity` | 0–100, calculada por Spotify según número y recencia de reproducciones. Las versiones duplicadas (single y álbum) se valoran por separado |
+| `duration_ms` | Duración en milisegundos |
+| `explicit` | Letra explícita (verdadero/falso) |
+| `danceability` | 0–1, qué tan bailable es (tempo, estabilidad del ritmo, fuerza del compás) |
+| `energy` | 0–1, intensidad y actividad percibidas |
+| `key` | Tonalidad (0 = C, 1 = C♯/D♭, …; −1 si no se detecta) |
+| `loudness` | Sonoridad general en dB |
+| `mode` | Modalidad: 1 mayor, 0 menor |
+| `speechiness` | 0–1, presencia de palabra hablada (> 0.66 casi solo habla) |
+| `acousticness` | 0–1, confianza de que la pista es acústica |
+| `instrumentalness` | 0–1, probabilidad de que no tenga voz |
+| `liveness` | 0–1, presencia de público (> 0.8, probablemente en vivo) |
+| `valence` | 0–1, positividad musical |
+| `tempo` | Tempo estimado en BPM |
+| `time_signature` | Compás estimado (3 a 7) |
+| `track_genre` | Género (en el dataset limpio: 114 columnas binarias `genre_*`) |
+| **Derivadas** | `duration_min`, `is_short` (< 3 min), `is_long` (> 5 min), `n_artists`, `energy_x_dance`, `valence_x_energy`, `explicit_x_dance`; `artist_primary` y `artist_n_tracks` solo para partición y auditoría |
 
-> **Nota técnica:** el cluster sonoro se calcula con `imputer_audio` y `scaler_audio` **específicos para las 14 features acústicas**, ajustados solo con train, porque el imputer/scaler globales esperan las 138 columnas.
+### B. Glosario de métricas
+- **Fuga de datos (data leakage):** uso, durante el entrenamiento o la evaluación, de información que no estará
+  disponible al predecir en la realidad.
+- **PR-AUC (Average Precision):** calidad del ranking para la clase hit; su valor de referencia es la prevalencia.
+- **Recall / Precision / Waste Rate:** hits detectados / promociones acertadas / 1 − Precision.
+- **F2:** media ponderada de precision y recall que da el doble de peso al recall.
+- **OOF (out-of-fold):** predicción de cada canción hecha por un modelo que no la vio al entrenar.
+- **Validación cruzada agrupada:** pliegues en que un mismo artista nunca está en entrenamiento y validación a la vez.
+- **Brecha train − CV:** diferencia de desempeño entre datos vistos y no vistos; mide sobreajuste.
+- **Regla de 1σ:** entre modelos estadísticamente equivalentes al mejor, elegir el más simple o regularizado.
+
+### C. Figuras
+- `imagenes/`: figuras de EV1 (8), extraídas del notebook `ev1_ML_EDA_JohanSoto.ipynb`.
+- `images/ev2_*.png`: figuras de EV2 corregido (5).
+- `images/ev3_*.png`: figuras de EV3 (16).
+
+Todas provienen de las salidas de los notebooks ejecutados. Al volver a ejecutar, EV2 y EV3 regeneran sus figuras
+en `images/` (en Colab: `/content/images/`).
 
 ---
 
-## Verificación consolidada de KPIs (test)
-
-```
-VERIFICACIÓN DE KPIs (test)
-======================================================================
-Prevalencia base en test: 0.2382
-F1 medio entre géneros evaluables (estado='ok'): 0.6771
-
-            KPI    Valor                 Meta    Estado
-     Recall@Hit   0.8962              >= 0.70    CUMPLE
-         PR-AUC   0.8487             > 0.2382    CUMPLE
-       F1-Score   0.7246              >= 0.60    CUMPLE
-       F2-Score   0.8186               > 0.65    CUMPLE
-        ROC-AUC   0.9389              >= 0.80    CUMPLE
-     Waste Rate   0.3918              <= 0.15 NO CUMPLE
-Diversity Score 103.0000                >= 15    CUMPLE
-    Brier Score   0.0942 <= 0.10 (referencia)    CUMPLE
-```
-
----
-
-## Conclusión ejecutiva
-
-El modelo **XGBoost** con Target Encoding de artista/álbum y umbral optimizado por F2 (0.386) es el mejor candidato de despliegue, con **PR-AUC 0.8487**, **Recall@Hit 0.8962** y **F1 0.7246**, cumpliendo **7 de 8 KPIs**. El único KPI no cumplido (Waste Rate 39.18%) es consecuencia directa de la política de priorización de recall y debe resolverse vía ajuste de umbral según el apetito de riesgo del negocio.
-
-Sin embargo, el análisis de sesgos revela que el desempeño está **fuertemente mediado por variables no acústicas** (identidad del artista), lo que plantea riesgos éticos concretos: invisibilización de artistas emergentes, homogeneización cultural y amplificación de sesgos de prevalencia. Las recomendaciones éticas de §17 deben considerarse **condiciones de uso**, no sugerencias opcionales.
-
----
-
-*Fin del informe — ev2_ML_Modelo_JohanSoto.ipynb*
+*Notebooks: `ev1_ML_EDA_JohanSoto.ipynb`, `ev2_ML_Modelo_JohanSoto.ipynb`, `ev3_ML_Optimizacion_JohanSoto.ipynb`.*
