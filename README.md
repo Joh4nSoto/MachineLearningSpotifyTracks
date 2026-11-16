@@ -14,21 +14,21 @@ presupuesto de promoción. ¿Podemos anticipar, solo con información disponible
 **hit** (`popularity ≥ 50`, el 24% superior del catálogo)?
 
 **Respuesta corta.** Sí, pero menos de lo que creíamos. El modelo elegido (**XGBoost**) ordena las canciones
-**2.6 veces mejor que el azar** (PR-AUC 0.63 frente a 0.24) y, con el umbral de negocio, **descubre 71 de cada 100
+**2.6 veces mejor que el azar** (PR-AUC 0.62 frente a 0.24) y, con el umbral de negocio, **descubre 71 de cada 100
 hits** gastando el **47% del presupuesto en canciones que no lo serán**, frente al **76%** que se perdería
 promocionando al azar. Todo esto medido con **artistas que el modelo nunca vio**, que es el caso real del negocio.
 
 **Lo más importante que aprendimos:**
 
 1. **La versión anterior (EV2 original) estaba inflada por fuga de datos.** Reportaba PR-AUC 0.85 porque el modelo
-   "conocía" a los artistas y álbumes del test. Al corregirlo, el desempeño honesto es 0.63. La diferencia no era
+   "conocía" a los artistas y álbumes del test. Al corregirlo, el desempeño honesto es 0.62. La diferencia no era
    capacidad predictiva, era información que en la vida real no existe al lanzar una canción.
-2. **La música por sí sola explica solo ~10% de la popularidad.** El 77% de lo que el modelo usa es el **género**,
+2. **La música por sí sola explica solo ~9% de la popularidad.** El 81% de lo que el modelo usa es el **género**,
    es decir, qué mercados premia la plataforma. El éxito depende más del contexto que del sonido (efecto Mateo).
-3. **El modelo discrimina fuertemente a los géneros de nicho:** detecta el 92% de los hits de géneros mainstream,
-   pero solo el 2% de los hits de géneros de nicho. Por eso **no debe usarse como filtro automático**.
+3. **El modelo discrimina fuertemente a los géneros de nicho:** detecta el 93% de los hits de géneros mainstream,
+   pero solo el 4% de los hits de géneros de nicho. Por eso **no debe usarse como filtro automático**.
 4. **Varias metas de KPI se fijaron con el modelo que tenía fuga** y hoy no son alcanzables (Waste ≤ 15% implicaría
-   detectar solo el 9% de los hits). Proponemos redefinirlas respecto del azar.
+   detectar solo el 8% de los hits). Proponemos redefinirlas respecto del azar.
 
 **Recomendación.** Usar XGBoost como **herramienta de priorización** (no de decisión automática), con umbral
 documentado, re-ranking con cupo por género, cuota para artistas emergentes y revisión humana.
@@ -36,9 +36,9 @@ documentado, re-ranking con cupo por género, cuota para artistas emergentes y r
 | | EV2 original (con fuga) | **EV3 final (honesto)** |
 |---|---|---|
 | Cómo se evaluó | Split aleatorio + Target Encoding de artista/álbum | Split y validación **por artista** (nunca vistos) |
-| PR-AUC test | 0.849 | **0.630** (azar: 0.241) |
-| ROC-AUC test | 0.939 | **0.847** |
-| ¿Es creíble en producción? | No: usaba información del futuro | **Sí:** CV y test coinciden (0.635 vs 0.630) |
+| PR-AUC test | 0.849 | **0.619** (azar: 0.241) |
+| ROC-AUC test | 0.939 | **0.842** |
+| ¿Es creíble en producción? | No: usaba información del futuro | **Sí:** CV y test coinciden (0.623 vs 0.619) |
 
 ---
 
@@ -96,23 +96,23 @@ Resultados en el **test de artistas nunca vistos** (XGBoost, umbral 0.55).
 
 | KPI | Qué mide para el negocio | Meta | Resultado | Estado | Lectura |
 |---|---|---|---|---|---|
-| **Recall@Hit** | De cada 100 hits, cuántos detectamos | ≥ 0.70 | **0.713** | ✅ | Se descubren 71 de cada 100 éxitos |
-| **PR-AUC** | Calidad de la lista de candidatos a hit | > 0.50 | **0.630** | ✅ | 2.6× mejor que el azar (0.241) |
-| **F2-Score** | Balance que prioriza no perder hits | > 0.65 | **0.666** | ✅ | Cumple con poco margen |
-| **Waste Rate** | % del presupuesto en canciones que no serán hit | ≤ 0.15 | 0.473 | ❌ | Meta fijada con el modelo con fuga; el azar desperdicia 0.759 |
-| **NDCG@20** | Calidad del orden de una playlist de 20 | > 0.80 | 0.675 | ❌ | El orden fino depende de marketing/playlists, no observables |
-| **Diversity Score** | Géneros distintos en el top-200 promocionado | ≥ 15 | 8 → **25** con re-ranking ✅ | ⚠️ | Sin cupo, el top-200 se concentra; con cupo de 10% por género sube a 25 |
+| **Recall@Hit** | De cada 100 hits, cuántos detectamos | ≥ 0.70 | **0.707** | ✅ | Se descubren 71 de cada 100 éxitos |
+| **PR-AUC** | Calidad de la lista de candidatos a hit | > 0.50 | **0.619** | ✅ | 2.6× mejor que el azar (0.241) |
+| **F2-Score** | Balance que prioriza no perder hits | > 0.65 | **0.661** | ✅ | Cumple con poco margen |
+| **Waste Rate** | % del presupuesto en canciones que no serán hit | ≤ 0.15 | 0.474 | ❌ | Meta fijada con el modelo con fuga; el azar desperdicia 0.759 |
+| **NDCG@20** | Calidad del orden de una playlist de 20 | > 0.80 | 0.668 | ❌ | El orden fino depende de marketing/playlists, no observables |
+| **Diversity Score** | Géneros distintos en el top-200 promocionado | ≥ 15 | 8 → **21** con re-ranking | ✅ | Sin cupo, el top-200 se concentra; con cupo de 10% por género sube a 21 |
 | **MAE** | Error medio al estimar la popularidad (0–100) | ≤ 10 | 11.8 | ❌ | 32% mejor que predecir siempre la mediana (17.3) |
 | **RMSE** | Penaliza errores grandes | < 12 | 16.8 | ❌ | Errores grandes en artistas desconocidos |
-| **R²** | % de la popularidad explicado **solo por la música** | ≥ 0.45 | 0.095 | ❌ | **Hallazgo:** la música explica ~10%; el resto es contexto |
+| **R²** | % de la popularidad explicado **solo por la música** | ≥ 0.45 | 0.086 | ❌ | **Hallazgo:** la música explica ~9%; el resto es contexto |
 
-**Cumplimiento:** 3/9 con la lista sin re-ranking; **4/9** con la solución operativa recomendada (modelo +
-re-ranking con cupo por género, que forma parte de la solución).
+**Cumplimiento: 4/9** con la solución operativa recomendada (modelo + re-ranking con cupo por género, que forma
+parte de la solución). Sin el re-ranking serían 3/9.
 
 **Por qué no se cumplen los demás y por qué no es un fracaso del modelo:**
 - Las metas de EV1 se fijaron antes de descubrir la fuga; con el modelo inflado (PR-AUC 0.85) parecían alcanzables.
 - **Waste ≤ 15% y Recall ≥ 70% son incompatibles** con la información disponible al lanzar: con Waste ≤ 15% el
-  máximo Recall posible es 0.09; para Recall 70% el desperdicio mínimo es 0.46 (Sección 8.6).
+  máximo Recall posible es 0.08; para Recall 70% el desperdicio mínimo es 0.47 (Sección 8.6).
 - El **R² bajo responde la pregunta de negocio** del KPI ("¿cuánto del éxito se debe solo a la música?"): poco.
 - **Propuesta:** redefinir Waste Rate como mejora respecto del azar (hoy: −29 puntos porcentuales) y fijar metas de
   MAE/NDCG con una línea base honesta.
@@ -341,8 +341,8 @@ Matriz de confusión de XGBoost: 3.628 hits detectados, 612 hits perdidos, 4.410
 
 ## 8. EV3 — Optimización, ensambles, generalización y selección
 
-> Cifras de la ejecución completa con XGBoost 3.4.1 y scikit-learn 1.6.1. Los valores marcados con **†** cambian con
-> el ajuste final contra el sobreajuste (Sección 8.9) y deben actualizarse con la última ejecución del notebook.
+> Cifras de la ejecución final del notebook (`MODO_RAPIDO = False`, XGBoost 3.4.1, scikit-learn 1.6.1), con la
+> regla de 1σ contra el sobreajuste ya aplicada (Sección 8.9).
 
 ### 8.0 Mapa de la rúbrica
 
@@ -376,21 +376,26 @@ sería inviable). **Métrica:** PR-AUC (independiente del umbral, adecuada al de
 `StratifiedGroupKFold(3)` por artista. La configuración base de EV2 se evalúa **en los mismos pliegues**, así que
 el Δ se atribuye solo a los hiperparámetros.
 
-| Modelo | PR-AUC CV base (EV2) | PR-AUC CV optimizado | Δ | Configuraciones probadas |
-|---|---|---|---|---|
-| Random Forest | 0.5949 | 0.5975 | +0.0026 | 10 |
-| XGBoost | 0.6145 | 0.6156 | +0.0010 | 20 |
+| Modelo | PR-AUC CV base (EV2) | Brecha base | PR-AUC CV elegida (1σ) | Brecha elegida | Δ PR-AUC | Configuraciones probadas |
+|---|---|---|---|---|---|---|
+| Random Forest | 0.5695 | 0.337 | 0.5785 | 0.403 | +0.0091 | 10 |
+| XGBoost | 0.5958 | 0.283 | 0.5877 | **0.129** | −0.0081 | 20 (11 equivalentes a la mejor) |
 
 ![Búsqueda de hiperparámetros](images/ev3_ie9_busqueda.png)
 ![Sensibilidad de XGBoost](images/ev3_ie9_sensibilidad_xgb.png)
 
-**Lectura:** la mejora es pequeña (empate técnico). El techo lo pone la información disponible, no los
-hiperparámetros. **Problema detectado:** al elegir solo por el máximo PR-AUC, Random Forest seleccionó
-`min_samples_leaf=1` (PR-AUC de train 0.998), es decir, la búsqueda **premió la memorización**. La corrección
-(regla de 1σ con control de brecha) está en la Sección 8.9.
+**Configuración final:** XGBoost `learning_rate` 0.031, `max_depth` 6, `n_estimators` 839, `min_child_weight` 10,
+`gamma` 5, `reg_lambda` 15.6, `subsample` 0.96, `colsample_bytree` 0.84 (más regularizada que la base de EV2). Random
+Forest: 300 árboles, `min_samples_leaf` 2, `max_features` log2, sin límite de profundidad.
+
+**Lectura:** el PR-AUC prácticamente no cambia (±0.01, dentro de 1σ): el techo lo pone la información disponible,
+no los hiperparámetros. Lo que sí cambia es el **sobreajuste**: en XGBoost la regla de 1σ cede 0.008 de PR-AUC a
+cambio de bajar la brecha train − CV de 0.283 a 0.129. **Problema detectado antes:** al elegir solo por el máximo
+PR-AUC, Random Forest seleccionaba `min_samples_leaf=1` (PR-AUC de train 0.998), es decir, la búsqueda **premiaba la
+memorización**. La corrección (regla de 1σ con control de brecha) está en la Sección 8.9.
 
 La **mayor ganancia de optimización vino del umbral** (Sección 8.6): pasar de 0.50 al umbral de negocio redujo el
-Waste Rate de XGBoost de 50.3% a 47.3% en test.
+Waste Rate de XGBoost de 51.8% a 47.4% en test.
 
 ### 8.4 IE10 — Técnicas de ensamble
 
@@ -407,9 +412,9 @@ Waste Rate de XGBoost de 50.3% a 47.3% en test.
 |---|---|---|---|---|---|---|---|
 | Árbol de Decisión | 0.671 | 0.241 | 0.355 | 0.384 | 0.632 | 3.219 | 500 |
 | Regresión Logística | 0.461 | 0.779 | 0.579 | 0.572 | 0.821 | 936 | 3.871 |
-| Random Forest | 0.636 | 0.434 | 0.516 | 0.619 | 0.838 | 2.402 | 1.050 |
-| XGBoost | 0.497 | 0.780 | 0.607 | 0.631 | 0.847 | 934 | 3.343 |
-| Votación RF+XGB | 0.580 | 0.612 | 0.595 | 0.631 | 0.847 | 1.647 | 1.877 |
+| Random Forest | 0.577 | 0.569 | 0.573 | 0.620 | 0.838 | 1.828 | 1.767 |
+| XGBoost | 0.482 | 0.791 | 0.599 | 0.619 | 0.842 | 887 | 3.599 |
+| Votación RF+XGB | 0.540 | 0.688 | 0.605 | 0.626 | 0.843 | 1.321 | 2.491 |
 
 ![Comparación de modelos](images/ev3_comparacion_umbral05.png)
 ![Matrices de confusión con umbral 0.50](images/ev3_matrices_umbral05.png)
@@ -419,9 +424,9 @@ descubrir el 70% de los hits, ¿qué parte del presupuesto se desperdicia?* (le�
 
 | Árbol | Regresión Logística | Random Forest | **XGBoost** | Votación | Azar |
 |---|---|---|---|---|---|
-| 74.0% | 50.4% | 47.1% | **46.1%** | 46.1% | 75.9% |
+| 74.0% | 50.4% | 47.4% | **47.1%** | 46.6% | 75.9% |
 
-Los ensambles ahorran **~28 puntos de presupuesto** frente al árbol simple. Además, el árbol es **inestable**: su
+Los ensambles ahorran **~27 puntos de presupuesto** frente al árbol simple. Además, el árbol es **inestable**: su
 Recall varía mucho entre pliegues de la CV (σ = 0.092, el único modelo sobre el límite de 0.05).
 
 ### 8.5 Curvas ROC y Precision-Recall
@@ -436,10 +441,10 @@ Se compararon cuatro políticas sobre las probabilidades OOF (XGBoost):
 
 | Política | Umbral | Recall test | Waste test | Hits perdidos | Promociones perdidas |
 |---|---|---|---|---|---|
-| Por defecto | 0.50 | 0.780 | 0.503 | 934 | 3.343 |
-| Máx F2 (política de EV2) | 0.35 | 0.905 | 0.576 | 401 | 5.208 |
-| Máx Recall con Waste ≤ 15% (meta original) | 0.93 | **0.083** | 0.142 | 3.890 | 58 |
-| **Recall ≥ 70% con mínimo Waste (oficial)** | **0.55** | **0.713** | **0.473** | 1.216 | 2.709 |
+| Por defecto | 0.50 | 0.791 | 0.518 | 887 | 3.599 |
+| Máx F2 (política de EV2) | 0.35 | 0.929 | 0.603 | 301 | 5.979 |
+| Máx Recall con Waste ≤ 15% (meta original) | 0.92 | **0.077** | 0.145 | 3.915 | 55 |
+| **Recall ≥ 70% con mínimo Waste (oficial)** | **0.55** | **0.707** | **0.474** | 1.244 | 2.702 |
 
 ![Barrido de umbral](images/ev3_barrido_umbral.png)
 ![Matrices de confusión con umbral óptimo](images/ev3_matrices_umbral_opt.png)
@@ -456,15 +461,15 @@ solo detecta el 8% de los hits: sería inútil. Se adoptó la regla de la Activi
 |---|---|---|
 | Random Forest (Gini) | acousticness, loudness, liveness | Favorece variables continuas: reparte la importancia entre las variables de audio |
 | XGBoost (Gain) | genre_pop-film, genre_chill, genre_k-pop | Se concentra en pocas variables muy informativas |
-| **Permutación (test)** | genre_pop-film, energy, loudness | Árbitro: mide la caída real de PR-AUC en datos no vistos |
+| **Permutación (test)** | genre_pop-film, genre_chill, genre_hip-hop | Árbitro: mide la caída real de PR-AUC en datos no vistos |
 
 **Importancia por bloques** (permutando bloques completos en test, XGBoost):
 
 | Bloque | % de la importancia |
 |---|---|
-| **Género (114 columnas)** | **76.9%** |
-| Acústicas (14) | 17.8% |
-| Ingeniería (7) | 5.3% |
+| **Género (114 columnas)** | **80.8%** |
+| Acústicas (14) | 14.7% |
+| Ingeniería (7) | 4.5% |
 
 ![Importancia por bloques](images/ev3_importancia_bloques.png)
 
@@ -472,10 +477,10 @@ solo detecta el 8% de los hits: sería inútil. Se adoptó la regla de la Activi
 
 | Variante | PR-AUC | R² popularidad | MAE |
 |---|---|---|---|
-| 1. Solo música | 0.420 | **0.095** | 15.6 |
-| **2. Lanzamiento (+ género), oficial** | **0.631** | 0.337 | 11.8 |
-| 3. + Catálogo (excluido) | 0.631 | 0.340 | 11.8 |
-| 4. + TE artista/álbum (excluido, fuga) | 0.722 | 0.668 | 9.3 |
+| 1. Solo música | 0.419 | **0.086** | 15.7 |
+| **2. Lanzamiento (+ género), oficial** | **0.619** | 0.337 | 11.8 |
+| 3. + Catálogo (excluido) | 0.617 | 0.327 | 11.7 |
+| 4. + TE artista/álbum (excluido, fuga) | 0.696 | 0.676 | 9.0 |
 
 ![Ablación](images/ev3_ablacion.png)
 
@@ -490,49 +495,48 @@ duración) es una señal secundaria útil para elegir el single dentro de un mis
 |---|---|---|---|---|---|---|
 | Árbol de Decisión | 0.391 · 0.385 · 0.392 · 0.402 · 0.397 | 0.393 | 0.006 | 0.874 | **0.092** | ⚠️ inestable |
 | Regresión Logística | 0.561 · 0.587 · 0.620 · 0.614 · 0.562 | 0.589 | 0.025 | 0.709 | 0.019 | ✅ |
-| Random Forest | 0.599 · 0.621 · 0.651 · 0.634 · 0.604 | 0.622 | 0.019 | 0.714 | 0.033 | ✅ |
-| **XGBoost** | 0.613 · 0.634 · 0.659 · 0.648 · 0.623 | **0.635** | **0.016** | 0.713 | 0.028 | ✅ |
-| Votación RF+XGB | 0.613 · 0.634 · 0.663 · 0.648 · 0.621 | 0.636 | 0.018 | 0.714 | 0.031 | ✅ |
+| Random Forest | 0.608 · 0.614 · 0.651 · 0.631 · 0.601 | 0.621 | 0.018 | 0.718 | 0.028 | ✅ |
+| **XGBoost** | 0.605 · 0.624 · 0.652 · 0.628 · 0.608 | **0.623** | **0.017** | 0.709 | 0.029 | ✅ |
+| Votación RF+XGB | 0.613 · 0.624 · 0.660 · 0.635 · 0.611 | 0.629 | 0.018 | 0.716 | 0.031 | ✅ |
 
 ![Estabilidad por pliegue](images/ev3_cv_k5.png)
 
-- **Votación vs. XGBoost:** diferencia media +0.0004, IC 95% [−0.0027, +0.0035] → **empate estadístico**.
-- **¿Cuánto inflaba la CV aleatoria?** XGBoost: 0.634 (por artista) vs 0.694 (aleatoria), **+0.060**; RF: +0.075.
-- **CV vs. test:** XGBoost 0.635 vs 0.630; todos los modelos difieren menos de 0.02 → **la CV predice bien el
+- **Votación vs. XGBoost:** la votación supera a XGBoost por +0.0052 de PR-AUC, IC 95% [+0.0009, +0.0096]: la
+  diferencia es **estadísticamente distinta de 0, pero pequeña** (menos de un tercio de la σ entre pliegues). Por qué
+  igual se elige XGBoost: Sección 8.11.
+- **¿Cuánto inflaba la CV aleatoria?** XGBoost: 0.620 (por artista) vs 0.670 (aleatoria), **+0.050**.
+- **CV vs. test:** XGBoost 0.623 vs 0.619; todos los modelos difieren menos de 0.02 → **la CV predice bien el
   desempeño en datos nunca vistos**.
 
 ### 8.9 IE11 — Diagnóstico de sobreajuste (Train vs. CV)
 Criterio de la ActividadML: brecha = métrica_train − métrica_CV; ≥ 0.10 indica sobreajuste.
 
-**Ejecución con búsqueda solo por máximo PR-AUC:**
-
-| Modelo | PR-AUC train | PR-AUC CV | Brecha | Diagnóstico |
-|---|---|---|---|---|
-| Árbol de Decisión | 0.458 | 0.393 | 0.064 | ✅ |
-| Regresión Logística | 0.615 | 0.589 | 0.027 | ✅ |
-| Random Forest | 0.998 | 0.622 | **0.376** | ⚠️ |
-| XGBoost | 0.813 | 0.635 | **0.178** | ⚠️ |
-| Votación RF+XGB | 0.976 | 0.636 | 0.340 | ⚠️ |
-
-![Train vs CV](images/ev3_train_vs_cv.png)
-![Curvas de aprendizaje](images/ev3_curvas_aprendizaje.png)
-
-Las curvas de aprendizaje muestran que la brecha de XGBoost **se cierra** con más datos (0.39 → 0.19): el modelo es
-adecuado, pero estaba poco regularizado.
-
+**Antes del ajuste** (búsqueda solo por máximo PR-AUC), XGBoost tenía brecha **0.178** y Random Forest **0.376**.
 **Ajuste aplicado:** **regla de 1 desviación estándar** en la búsqueda. Entre las configuraciones cuyo PR-AUC en CV
 está a menos de 1σ de la mejor (estadísticamente equivalentes), se elige la de **menor brecha train − CV**, con
 espacios que incluyen regularización fuerte (`max_depth`, `min_samples_leaf` en RF; `min_child_weight`, `gamma`,
 `reg_lambda` en XGB).
 
-> **Figura pendiente †:** `images/ev3_ie9_desempeno_vs_sobreajuste.png` (desempeño vs. brecha de cada
-> configuración probada, con la configuración elegida marcada) se genera con la versión final del notebook. Agregar
-> aquí después de la última ejecución: `![Desempeño vs sobreajuste](images/ev3_ie9_desempeno_vs_sobreajuste.png)`
+![Desempeño vs sobreajuste](images/ev3_ie9_desempeno_vs_sobreajuste.png)
 
-**Efecto observado en la prueba de validación del ajuste** †: brecha de XGBoost **0.18 → 0.08 (✅ OK)** con PR-AUC
-en CV prácticamente igual (−0.01, dentro de 1σ). Random Forest mantiene su configuración base (las regularizadas
-perdían demasiado PR-AUC) y sigue con brecha alta: RF memoriza por diseño, pero su CV y su test coinciden (0.622 vs
-0.619), es decir, generaliza.
+**Resultado final (modelos entrenados con el 100% de train, CV K=5):**
+
+| Modelo | PR-AUC train | PR-AUC CV | Brecha | Diagnóstico |
+|---|---|---|---|---|
+| Árbol de Decisión | 0.458 | 0.393 | 0.064 | ✅ |
+| Regresión Logística | 0.615 | 0.589 | 0.027 | ✅ |
+| Random Forest | 0.969 | 0.621 | **0.348** | ⚠️ |
+| **XGBoost** | 0.713 | 0.623 | **0.090** | ✅ |
+| Votación RF+XGB | 0.887 | 0.629 | 0.258 | ⚠️ |
+
+![Train vs CV](images/ev3_train_vs_cv.png)
+![Curvas de aprendizaje](images/ev3_curvas_aprendizaje.png)
+
+**Efecto del ajuste:** la brecha de XGBoost baja de **0.178 a 0.090 (✅ bajo el límite de 0.10)** con PR-AUC en CV
+prácticamente igual. Las curvas de aprendizaje muestran que su brecha además **se cierra** con más datos (0.128 →
+0.096). Random Forest no tenía configuraciones regularizadas dentro de 1σ (las regularizadas perdían demasiado
+PR-AUC) y sigue con brecha alta: RF memoriza por diseño, pero su CV y su test coinciden (0.621 vs 0.620), es decir,
+generaliza. La votación hereda ese sobreajuste.
 
 **Otro hallazgo de medición:** en una versión intermedia que aún usaba Target Encoding, hasta la Regresión
 Logística mostraba PR-AUC de train ≈ 0.99. Era una **auto-fuga del encoder** (al transformar filas de train usaba la
@@ -545,40 +549,40 @@ una segunda razón para retirar el TE.
 
 | Grupo de géneros (por tasa de hit en train) | Tasa de hit real | Recall OOF | Recall test |
 |---|---|---|---|
-| Nicho | 3.5% | 0.041 | **0.018** |
-| Intermedio | 20.6% | 0.389 | 0.418 |
-| Mainstream | 52.3% | 0.905 | **0.919** |
+| Nicho | 3.5% | 0.033 | **0.035** |
+| Intermedio | 20.6% | 0.355 | 0.371 |
+| Mainstream | 52.3% | 0.914 | **0.927** |
 
 ![Equidad por género](images/ev3_equidad_generos.png)
 
-> **Hallazgo crítico:** de cada 100 hits de géneros de nicho, el modelo detecta 2. Un hit de salsa o tango
+> **Hallazgo crítico:** de cada 100 hits de géneros de nicho, el modelo detecta 4. Un hit de salsa o tango
 > prácticamente nunca sería promocionado. Es el sesgo de **homogeneización cultural** hecho número.
 
 **Artistas emergentes vs. establecidos** (XGBoost, test):
 
 | Catálogo del artista | Tasa de hit real | Recall | Waste Rate |
 |---|---|---|---|
-| 1 canción | 29.1% | 0.730 | 0.435 |
-| 2–10 canciones | 25.8% | 0.733 | 0.432 |
-| > 10 canciones | 22.1% | 0.693 | 0.511 |
+| 1 canción | 29.1% | 0.726 | 0.441 |
+| 2–10 canciones | 25.8% | 0.719 | 0.439 |
+| > 10 canciones | 22.1% | 0.692 | 0.508 |
 
 ![Artistas emergentes](images/ev3_artistas_emergentes.png)
 
 No se subestima a los emergentes: el sesgo relevante es por **género**, no por tamaño del artista.
 
-**Segmentos sonoros (K-Means de EV2):** recall entre 0.67 (electrónica/metal de alta energía) y 0.82 (bailable de
+**Segmentos sonoros (K-Means de EV2):** recall entre 0.66 (electrónica/metal de alta energía) y 0.83 (bailable de
 alta energía). El perfil sonoro afecta menos que el género.
 
 **Diversidad de la lista promocionada y mitigación aplicada:**
 
 | | Géneros en el top-200 | Género dominante | Precisión del top-200 |
 |---|---|---|---|
-| Ranking original | 8 | 41% | 0.955 |
-| **Re-ranking con cupo 10% por género** | **25** | ≤ 10% | 0.890 |
+| Ranking original | 8 | 47% | 0.960 |
+| **Re-ranking con cupo 10% por género** | **21** | ≤ 10% | 0.885 |
 
-Ganar 17 géneros cuesta 6.5 puntos de precisión: es un *trade-off* explícito y barato.
+Ganar 13 géneros cuesta 7.5 puntos de precisión: es un *trade-off* explícito y barato.
 
-**Calibración:** la probabilidad media predicha (0.39) supera la tasa real (0.24) porque `scale_pos_weight` infla la
+**Calibración:** la probabilidad media predicha (0.41) supera la tasa real (0.24) porque `scale_pos_weight` infla la
 clase hit. Las probabilidades sirven para **ordenar**, no para decir "esta canción tiene 70% de probabilidad".
 
 ### 8.11 IE12 — Selección y justificación de la solución óptima
@@ -594,13 +598,13 @@ clase hit. Las probabilidades sirven para **ordenar**, no para decir "esta canci
 | Interpretabilidad | 0.05 | Auditabilidad ante artistas y regulación |
 | Costo de infraestructura | 0.05 | Operación y reentrenamiento |
 
-| Modelo | Precisión CV | PR-AUC CV | σ | Equidad | Brecha | Puntaje † |
+| Modelo | Precisión CV | PR-AUC CV | σ | Equidad | Brecha | Puntaje |
 |---|---|---|---|---|---|---|
-| **XGBoost** | **0.539** | 0.635 | 0.016 | 0.045 | 0.178 | **0.706** |
-| Regresión Logística | 0.500 | 0.589 | 0.025 | 0.016 | 0.027 | 0.658 |
-| Votación RF+XGB | 0.536 | 0.636 | 0.018 | 0.051 | 0.340 | 0.598 |
-| Random Forest | 0.515 | 0.622 | 0.019 | 0.106 | 0.376 | 0.581 |
-| Árbol de Decisión | 0.271 | 0.393 | 0.006 | 0.807 | 0.064 | 0.439 |
+| **XGBoost** | **0.528** | 0.623 | 0.017 | 0.036 | 0.090 | **0.720** |
+| Regresión Logística | 0.500 | 0.589 | 0.025 | 0.016 | 0.027 | 0.675 |
+| Votación RF+XGB | 0.525 | 0.629 | 0.018 | 0.050 | 0.258 | 0.618 |
+| Random Forest | 0.515 | 0.621 | 0.018 | 0.084 | 0.348 | 0.601 |
+| Árbol de Decisión | 0.271 | 0.393 | 0.006 | 0.807 | 0.064 | 0.438 |
 
 ![Radar de decisión](images/ev3_radar_decision.png)
 
@@ -608,15 +612,17 @@ clase hit. Las probabilidades sirven para **ordenar**, no para decir "esta canci
 gana el árbol, porque predice "hit" para casi todo (equidad alta, pero desperdicia 74%). **Interpretación:** si el
 negocio prioriza desempeño, XGBoost; el árbol no es una alternativa operativa real.
 
-**Por qué XGBoost y no la Votación:** empatan estadísticamente en PR-AUC (IC 95% contiene el 0), pero la votación
-entrena dos modelos (costo ≈7× en tiempo de entrenamiento), hereda el sobreajuste de RF y es menos interpretable. **A igual desempeño, se
-elige la solución más simple.**
+**Por qué XGBoost y no la Votación:** la votación tiene un PR-AUC levemente mayor (+0.005, estadísticamente distinto
+de 0), pero esa ventaja no se traduce en negocio: a Recall 70% desperdicia casi lo mismo (CV: 47.5% vs 47.2%;
+test: 47.7% vs 47.4%). A cambio, entrena dos modelos (≈6× más tiempo: 100 s vs 16 s), hereda el sobreajuste de RF
+(brecha 0.258 vs 0.090) y es menos interpretable. **Una mejora de 0.005 no justifica el doble de modelo y el triple
+de sobreajuste.**
 
 **Párrafo ejecutivo (generado por el notebook):**
 > Se recomienda desplegar XGBoost como motor de priorización de lanzamientos. En validación cruzada de 5 pliegues
-> alcanza PR-AUC = 0.635 (±0.016) y, con un umbral de 0.55 que garantiza descubrir al menos el 70% de los hits,
-> desperdicia 46.1% del presupuesto frente al 76% de promocionar al azar. En el test (artistas nunca vistos) confirma
-> Recall = 0.713, Waste Rate = 0.473 y PR-AUC = 0.630; para descubrir el 70% de los hits desperdicia 27.9% menos
+> alcanza PR-AUC = 0.623 (±0.017) y, con un umbral de 0.55 que garantiza descubrir al menos el 70% de los hits,
+> desperdicia 47.2% del presupuesto frente al 76% de promocionar al azar. En el test (artistas nunca vistos) confirma
+> Recall = 0.707, Waste Rate = 0.474 y PR-AUC = 0.619; para descubrir el 70% de los hits desperdicia 27.0% menos
 > presupuesto que el árbol simple. Su principal limitación es que la música explica poco del éxito y que favorece a
 > los géneros que la plataforma ya premia: debe usarse como señal complementaria, con cupos de diversidad, cuota para
 > artistas emergentes y revisión humana.
@@ -625,14 +631,14 @@ elige la solución más simple.**
 
 | Métrica | Valor | Para el negocio |
 |---|---|---|
-| Recall | 0.713 | Descubre 71 de cada 100 éxitos |
-| Precision | 0.527 | 53 de cada 100 promociones aciertan |
-| Waste Rate | 0.473 | Se pierde el 47% del presupuesto promocional (azar: 76%) |
-| PR-AUC | 0.630 | La lista de candidatos es 2.6× mejor que elegir al azar |
-| ROC-AUC | 0.847 | En 85% de los pares hit/no-hit, el hit recibe mayor puntaje |
-| F2 | 0.666 | Balance que pesa doble no perder hits |
-| NDCG@20 | 0.675 | Orden aceptable dentro de una playlist, no excelente |
-| σ entre pliegues | 0.016 | El desempeño no depende de la muestra |
+| Recall | 0.707 | Descubre 71 de cada 100 éxitos |
+| Precision | 0.526 | 53 de cada 100 promociones aciertan |
+| Waste Rate | 0.474 | Se pierde el 47% del presupuesto promocional (azar: 76%) |
+| PR-AUC | 0.619 | La lista de candidatos es 2.6× mejor que elegir al azar |
+| ROC-AUC | 0.842 | En 84% de los pares hit/no-hit, el hit recibe mayor puntaje |
+| F2 | 0.661 | Balance que pesa doble no perder hits |
+| NDCG@20 | 0.668 | Orden aceptable dentro de una playlist, no excelente |
+| σ entre pliegues | 0.017 | El desempeño no depende de la muestra |
 
 ---
 
@@ -642,7 +648,7 @@ elige la solución más simple.**
 |---|---|---|---|---|---|
 | 1 | EV1 | Canciones repetidas por género | `track_id` repetidos | Agrupar por `track_id` + multietiqueta | 114.000 → 88.732 filas |
 | 2 | EV2 | SMOTE crea canciones imposibles en el one-hot | F1 estancado en 0.57–0.59 | `class_weight` / `scale_pos_weight` | Sin datos sintéticos inválidos |
-| 3 | EV2 | **Fuga por TE de álbum y split aleatorio** | Retroalimentación EP2; ablación | Split por artista; sin TE; pipeline | PR-AUC 0.85 → 0.63 (honesto) |
+| 3 | EV2 | **Fuga por TE de álbum y split aleatorio** | Retroalimentación EP2; ablación | Split por artista; sin TE; pipeline | PR-AUC 0.85 → 0.62 (honesto) |
 | 4 | EV2 | 8.309 canciones repetidas con otro `track_id` | Conteo nombre + artista | Cubierto por el split por artista | Sin copias entre train y test |
 | 5 | EV2 | TE de artista no sirve con artistas nuevos | −0.030 PR-AUC en ablación | Excluido | Modelo coherente con el caso real |
 | 6 | EV2 | Catálogo del artista no aporta y premia a los grandes | +0.003 PR-AUC | Excluido; solo para auditoría | Menos efecto Mateo |
@@ -656,11 +662,11 @@ elige la solución más simple.**
 | 14 | EV3 | Auto-fuga del TE en métricas de train | LR con PR-AUC train ≈ 0.99 | Train medido sobre codificación cruzada | Diagnóstico de sobreajuste real |
 | 15 | EV3 | Política Waste ≤ 15% inútil sin fuga | Recall máximo 0.08 | Recall ≥ 70% con mínimo Waste | KPI principal cumplido |
 | 16 | EV3 | Comparar modelos solo con su umbral puede ser injusto (probabilidades escalonadas del árbol) | Árbol: σ Recall 0.092 entre pliegues | Comparar además por Waste a Recall 70% en la curva PR | Comparación justa entre modelos |
-| 17 | EV3 | **Búsqueda premiaba la memorización** | RF `min_samples_leaf=1`, brecha 0.38 | Regla de 1σ + espacios regularizados | XGBoost brecha 0.18 → 0.08 † |
+| 17 | EV3 | **Búsqueda premiaba la memorización** | RF `min_samples_leaf=1`, brecha 0.38 | Regla de 1σ + espacios regularizados | XGBoost brecha 0.178 → 0.090 |
 | 18 | EV3 | KPIs de regresión distintos entre EV2 y EV3 | R² 0.090 vs 0.098 | Mismas variables e hiperparámetros | Cifras idénticas en ambos notebooks |
 | 19 | EV3 | El entorno se cerraba tras ~1 hora | Reinicio del kernel | Puntos de guardado (`cacheado`) + menos iteraciones | Reanudable; 2.ª ejecución en segundos |
 | 20 | EV3 | Explicación incorrecta de la fuga del álbum ("los compilados delatan el éxito") | Compilados con tasa de hit 0 | Redacción corregida: la popularidad es homogénea dentro del álbum | Explicación fiel a los datos |
-| 21 | EV3 | Top-200 concentrado en 8 géneros | Diversity 8 < 15 | Re-ranking con cupo 10% | 25 géneros, −6.5 pts de precisión |
+| 21 | EV3 | Top-200 concentrado en 8 géneros | Diversity 8 < 15 | Re-ranking con cupo 10% | 21 géneros, −7.5 pts de precisión |
 
 ---
 
@@ -668,12 +674,12 @@ elige la solución más simple.**
 
 | Sesgo | Evidencia | Qué hicimos | Impacto si no se controla | Precaución en producción |
 |---|---|---|---|---|
-| **Fuga de información** | CV aleatoria +0.06 PR-AUC; TE álbum +0.09 | Split y CV por artista; sin TE; umbral con OOF | Presupuesto decidido con un modelo mucho peor de lo que se cree | Validar siempre con artistas/períodos no vistos; no usar variables posteriores al lanzamiento |
-| **Efecto Mateo** | Música sola R² 0.10; género 77% de la importancia | Ablación y declaración explícita | Se promociona lo que ya era popular; profecía autocumplida | Usar como apoyo, no como filtro; cuota para artistas sin historial |
-| **Homogeneización por género** | Recall nicho 0.02 vs mainstream 0.92 | Equidad como criterio de la matriz; re-ranking con cupo | Catálogo cada vez más uniforme; nicho invisible | Cupo por género en la lista final; reportar el ratio en cada iteración |
+| **Fuga de información** | CV aleatoria +0.05 PR-AUC; TE álbum +0.08 | Split y CV por artista; sin TE; umbral con OOF | Presupuesto decidido con un modelo mucho peor de lo que se cree | Validar siempre con artistas/períodos no vistos; no usar variables posteriores al lanzamiento |
+| **Efecto Mateo** | Música sola R² 0.09; género 81% de la importancia | Ablación y declaración explícita | Se promociona lo que ya era popular; profecía autocumplida | Usar como apoyo, no como filtro; cuota para artistas sin historial |
+| **Homogeneización por género** | Recall nicho 0.04 vs mainstream 0.93 | Equidad como criterio de la matriz; re-ranking con cupo | Catálogo cada vez más uniforme; nicho invisible | Cupo por género en la lista final; reportar el ratio en cada iteración |
 | **Artistas emergentes** | Recall 0.73 (1 canción) vs 0.69 (>10) | Sin TE ni catálogo como variables | Hoy controlado; reaparecería si se agrega historial del artista | Monitorear recall por tamaño de catálogo |
-| **Conflicto de KPIs** | Waste ≤ 15% ⇒ Recall 0.08 | Política explícita y tabla de alternativas | Con umbral 0.50 se desperdiciaría 50% | Documentar el umbral como decisión de negocio; recalcularlo si cambia el presupuesto |
-| **Calibración** | Prob. media 0.39 vs tasa real 0.24 | Uso del umbral, no de la probabilidad cruda | Decisiones con probabilidades sobreestimadas | Calibrar (Platt/isotónica) si se necesitan probabilidades |
+| **Conflicto de KPIs** | Waste ≤ 15% ⇒ Recall 0.08 | Política explícita y tabla de alternativas | Con umbral 0.50 se desperdiciaría 52% | Documentar el umbral como decisión de negocio; recalcularlo si cambia el presupuesto |
+| **Calibración** | Prob. media 0.41 vs tasa real 0.24 | Uso del umbral, no de la probabilidad cruda | Decisiones con probabilidades sobreestimadas | Calibrar (Platt/isotónica) si se necesitan probabilidades |
 | **Recencia y muestreo** | ~1.000 canciones por género; popularidad reciente | Declarado como limitación | Catálogo histórico subvalorado | Agregar fecha de lanzamiento; reentrenar periódicamente |
 | **Manipulación** | *Stream farming* puede inflar la popularidad | Declarado | Modelo reentrenado con datos contaminados | Auditar anomalías de reproducciones antes de reentrenar |
 
@@ -699,8 +705,8 @@ elige la solución más simple.**
 
 ## 12. Viabilidad financiera (simulación)
 
-**Resultado:** si cada promoción costara $500.000 CLP, conseguir los mismos 3.024 hits cuesta **$2.867 millones con el
-modelo y $6.269 millones al azar**: un ahorro de **$3.402 millones (54%)** y un costo por hit **2,2 veces menor**.
+**Resultado:** si cada promoción costara $500.000 CLP, conseguir los mismos 2.996 hits cuesta **$2.849 millones con el
+modelo y $6.211 millones al azar**: un ahorro de **$3.362 millones (54%)** y un costo por hit **2,2 veces menor**.
 
 > ⚠️ **Escenario hipotético.** El dataset no trae costos de promoción. Los $500.000 por canción son un valor de
 > ejemplo para traducir las métricas a dinero. El supuesto clave es que todas las promociones cuestan lo mismo.
@@ -712,30 +718,30 @@ Toda la simulación sale de la matriz de confusión de XGBoost (umbral 0.55) en 
 
 | | Promocionada (predicho hit) | No promocionada | Total |
 |---|---|---|---|
-| **Real hit** | TP = 3.024 | FN = 1.216 | 4.240 |
-| **Real no hit** | FP = 2.709 | TN = 10.630 | 13.339 |
-| **Total** | 5.733 | 11.846 | 17.579 |
+| **Real hit** | TP = 2.996 | FN = 1.244 | 4.240 |
+| **Real no hit** | FP = 2.702 | TN = 10.637 | 13.339 |
+| **Total** | 5.698 | 11.881 | 17.579 |
 
 ### 12.2 KPIs de negocio (sin dinero)
 
 | KPI | Fórmula | Cálculo | Resultado |
 |---|---|---|---|
-| Tasa de acierto de la promoción | TP / (TP + FP) | 3.024 / 5.733 | **52,7%** (azar: 24,1%) |
-| Rendimiento vs azar (lift) | precisión / prevalencia | 0,527 / 0,241 | **2,2×** |
-| Promociones por hit | (TP + FP) / TP | 5.733 / 3.024 | **1,9** (azar: 4,1) |
-| Promociones fallidas | FP / (TP + FP) | 2.709 / 5.733 | **47,3%** (azar: 75,9%; −29 pts) |
-| Foco del catálogo | (TP + FP) / total y TP / (TP + FN) | 5.733 / 17.579; 3.024 / 4.240 | **33% del catálogo capta 71% de los hits** |
-| Oportunidades perdidas | FN / (TP + FN) | 1.216 / 4.240 | **1.216 hits (28,7%)** |
+| Tasa de acierto de la promoción | TP / (TP + FP) | 2.996 / 5.698 | **52,6%** (azar: 24,1%) |
+| Rendimiento vs azar (lift) | precisión / prevalencia | 0,526 / 0,241 | **2,2×** |
+| Promociones por hit | (TP + FP) / TP | 5.698 / 2.996 | **1,9** (azar: 4,1) |
+| Promociones fallidas | FP / (TP + FP) | 2.702 / 5.698 | **47,4%** (azar: 75,9%; −28 pts) |
+| Foco del catálogo | (TP + FP) / total y TP / (TP + FN) | 5.698 / 17.579; 2.996 / 4.240 | **32% del catálogo capta 71% de los hits** |
+| Oportunidades perdidas | FN / (TP + FN) | 1.244 / 4.240 | **1.244 hits (29,3%)** |
 
 ### 12.3 Simulación con $500.000 por promoción
 
-| Escenario: lograr 3.024 hits | Con XGBoost | Al azar | Cálculo |
+| Escenario: lograr 2.996 hits | Con XGBoost | Al azar | Cálculo |
 |---|---|---|---|
-| Promociones necesarias | 5.733 | 12.537 | Modelo: TP + FP · Azar: 3.024 / 0,2412 |
-| Inversión total | $2.867 millones | $6.269 millones | Promociones × $500.000 |
-| Inversión en canciones que no fueron hit | $1.355 millones | $4.757 millones | Promociones fallidas × $500.000 |
-| Costo por hit conseguido | $948.000 | $2.073.000 | Inversión total / 3.024 |
-| **Ahorro** | **$3.402 millones (54%)** | — | Diferencia de inversión total |
+| Promociones necesarias | 5.698 | 12.421 | Modelo: TP + FP · Azar: 2.996 / 0,2412 |
+| Inversión total | $2.849 millones | $6.211 millones | Promociones × $500.000 |
+| Inversión en canciones que no fueron hit | $1.351 millones | $4.713 millones | Promociones fallidas × $500.000 |
+| Costo por hit conseguido | $951.000 | $2.073.000 | Inversión total / 2.996 |
+| **Ahorro** | **$3.362 millones (54%)** | — | Diferencia de inversión total |
 
 **Con presupuesto fijo:** $100 millones alcanzan para 200 promociones; con el modelo resultan ~105 hits y al azar ~48.
 
@@ -744,7 +750,7 @@ Toda la simulación sale de la matriz de confusión de XGBoost (umbral 0.55) en 
 - Si cambia el costo por promoción, los montos cambian en la misma proporción, pero el **ahorro relativo (54%)** y la
   **relación de costo por hit (2,2×)** no cambian: dependen solo de la matriz de confusión.
 - Si las promociones tuvieran costos distintos por canción, habría que ponderar cada FP y TP por su costo real.
-- La simulación no incluye el costo de los 1.216 hits perdidos (ingresos no capturados) ni el costo de operar el
+- La simulación no incluye el costo de los 1.244 hits perdidos (ingresos no capturados) ni el costo de operar el
   modelo, que es bajo frente a la inversión en marketing.
 - **Conclusión:** el modelo es financieramente viable como priorizador: con la misma inversión se obtiene más del
   doble de hits. La decisión final debe incluir el cupo por género y la revisión humana (Sección 13).
@@ -754,15 +760,15 @@ Toda la simulación sale de la matriz de confusión de XGBoost (umbral 0.55) en 
 ## 13. Conclusiones, limitaciones y recomendaciones para el negocio
 
 ### Conclusiones
-1. **Una métrica alta no es un buen modelo si hay fuga.** El PR-AUC bajó de 0.85 a 0.63 al evaluar como en la vida
+1. **Una métrica alta no es un buen modelo si hay fuga.** El PR-AUC bajó de 0.85 a 0.62 al evaluar como en la vida
    real; la cifra honesta es la única útil para decidir presupuesto.
-2. **El éxito en Spotify depende más del mercado que del sonido.** La música explica ~10% de la popularidad; el
-   género, 77% de la capacidad predictiva.
-3. **Los ensambles aportan valor medible:** para detectar el 70% de los hits, XGBoost desperdicia 46% del presupuesto
+2. **El éxito en Spotify depende más del mercado que del sonido.** La música explica ~9% de la popularidad; el
+   género, 81% de la capacidad predictiva.
+3. **Los ensambles aportan valor medible:** para detectar el 70% de los hits, XGBoost desperdicia 47% del presupuesto
    frente a 74% del árbol simple y 76% del azar.
 4. **La optimización más rentable fue el umbral**, no los hiperparámetros; y la optimización de hiperparámetros
    aportó sobre todo **generalización** (menor sobreajuste) con el mismo desempeño.
-5. **El modelo es estable y generaliza** (σ = 0.016; CV y test coinciden), pero **no es neutral**: casi no detecta
+5. **El modelo es estable y generaliza** (σ = 0.017; CV y test coinciden), pero **no es neutral**: casi no detecta
    hits de géneros de nicho.
 
 ### Limitaciones
@@ -829,7 +835,7 @@ por grupo de género, grafos de colaboración entre artistas y evaluación contr
 ### C. Figuras
 - `imagenes/`: figuras de EV1 (8), extraídas del notebook `ev1_ML_EDA_JohanSotoFernandaAlcaino.ipynb`.
 - `images/ev2_*.png`: figuras de EV2 corregido (5).
-- `images/ev3_*.png`: figuras de EV3 (16).
+- `images/ev3_*.png`: figuras de EV3 (17).
 
 Todas provienen de las salidas de los notebooks ejecutados. Al volver a ejecutar, EV2 y EV3 regeneran sus figuras
 en `images/` (en Colab: `/content/images/`).
