@@ -55,8 +55,9 @@ documentado, re-ranking con cupo por género, cuota para artistas emergentes y r
 9. [Registro de errores, ajustes y decisiones](#9-registro-de-errores-ajustes-y-decisiones)
 10. [Sesgos del modelo: evidencia, mitigación, impacto y precauciones](#10-sesgos-del-modelo-evidencia-mitigación-impacto-y-precauciones)
 11. [Ética, privacidad y marco normativo](#11-ética-privacidad-y-marco-normativo)
-12. [Conclusiones, limitaciones y recomendaciones para el negocio](#12-conclusiones-limitaciones-y-recomendaciones-para-el-negocio)
-13. [Anexos](#13-anexos)
+12. [Viabilidad financiera (simulación)](#12-viabilidad-financiera-simulación)
+13. [Conclusiones, limitaciones y recomendaciones para el negocio](#13-conclusiones-limitaciones-y-recomendaciones-para-el-negocio)
+14. [Anexos](#14-anexos)
 
 ---
 
@@ -168,9 +169,9 @@ MachineLearningSpotifyTracks/
 │   ├── kpis_spotify.csv
 │   └── spotify_tracks_evaluated.csv   ← salida de EV2
 ├── notebooks/
-│   ├── ev1_ML_EDA_JohanSoto.ipynb
-│   ├── ev2_ML_Modelo_JohanSoto.ipynb
-│   └── ev3_ML_Optimizacion_JohanSoto.ipynb
+│   ├── ev1_ML_EDA_JohanSotoFernandaAlcaino.ipynb
+│   ├── ev2_ML_Modelo_JohanSotoFernandaAlcaino.ipynb
+│   └── ev3_ML_Optimizacion_JohanSotoFernandaAlcaino.ipynb
 ├── models/
 │   ├── ev3_modelo_final.joblib        ← pipeline ganador + umbral
 │   └── cache_ev3/                     ← puntos de guardado de EV3
@@ -695,7 +696,61 @@ elige la solución más simple.**
 
 ---
 
-## 12. Conclusiones, limitaciones y recomendaciones para el negocio
+## 12. Viabilidad financiera (simulación)
+
+**Resultado:** si cada promoción costara $500.000 CLP, conseguir los mismos 3.024 hits cuesta **$2.867 millones con el
+modelo y $6.269 millones al azar**: un ahorro de **$3.402 millones (54%)** y un costo por hit **2,2 veces menor**.
+
+> ⚠️ **Escenario hipotético.** El dataset no trae costos de promoción. Los $500.000 por canción son un valor de
+> ejemplo para traducir las métricas a dinero. El supuesto clave es que todas las promociones cuestan lo mismo.
+
+### 12.1 Dato base
+
+Toda la simulación sale de la matriz de confusión de XGBoost (umbral 0.55) en la prueba final: 17.579 canciones de
+3.517 artistas que el modelo nunca vio (EV3, comparación en test al umbral óptimo).
+
+| | Promocionada (predicho hit) | No promocionada | Total |
+|---|---|---|---|
+| **Real hit** | TP = 3.024 | FN = 1.216 | 4.240 |
+| **Real no hit** | FP = 2.709 | TN = 10.630 | 13.339 |
+| **Total** | 5.733 | 11.846 | 17.579 |
+
+### 12.2 KPIs de negocio (sin dinero)
+
+| KPI | Fórmula | Cálculo | Resultado |
+|---|---|---|---|
+| Tasa de acierto de la promoción | TP / (TP + FP) | 3.024 / 5.733 | **52,7%** (azar: 24,1%) |
+| Rendimiento vs azar (lift) | precisión / prevalencia | 0,527 / 0,241 | **2,2×** |
+| Promociones por hit | (TP + FP) / TP | 5.733 / 3.024 | **1,9** (azar: 4,1) |
+| Promociones fallidas | FP / (TP + FP) | 2.709 / 5.733 | **47,3%** (azar: 75,9%; −29 pts) |
+| Foco del catálogo | (TP + FP) / total y TP / (TP + FN) | 5.733 / 17.579; 3.024 / 4.240 | **33% del catálogo capta 71% de los hits** |
+| Oportunidades perdidas | FN / (TP + FN) | 1.216 / 4.240 | **1.216 hits (28,7%)** |
+
+### 12.3 Simulación con $500.000 por promoción
+
+| Escenario: lograr 3.024 hits | Con XGBoost | Al azar | Cálculo |
+|---|---|---|---|
+| Promociones necesarias | 5.733 | 12.537 | Modelo: TP + FP · Azar: 3.024 / 0,2412 |
+| Inversión total | $2.867 millones | $6.269 millones | Promociones × $500.000 |
+| Inversión en canciones que no fueron hit | $1.355 millones | $4.757 millones | Promociones fallidas × $500.000 |
+| Costo por hit conseguido | $948.000 | $2.073.000 | Inversión total / 3.024 |
+| **Ahorro** | **$3.402 millones (54%)** | — | Diferencia de inversión total |
+
+**Con presupuesto fijo:** $100 millones alcanzan para 200 promociones; con el modelo resultan ~105 hits y al azar ~48.
+
+### 12.4 Sensibilidad y lectura
+
+- Si cambia el costo por promoción, los montos cambian en la misma proporción, pero el **ahorro relativo (54%)** y la
+  **relación de costo por hit (2,2×)** no cambian: dependen solo de la matriz de confusión.
+- Si las promociones tuvieran costos distintos por canción, habría que ponderar cada FP y TP por su costo real.
+- La simulación no incluye el costo de los 1.216 hits perdidos (ingresos no capturados) ni el costo de operar el
+  modelo, que es bajo frente a la inversión en marketing.
+- **Conclusión:** el modelo es financieramente viable como priorizador: con la misma inversión se obtiene más del
+  doble de hits. La decisión final debe incluir el cupo por género y la revisión humana (Sección 13).
+
+---
+
+## 13. Conclusiones, limitaciones y recomendaciones para el negocio
 
 ### Conclusiones
 1. **Una métrica alta no es un buen modelo si hay fuga.** El PR-AUC bajó de 0.85 a 0.63 al evaluar como en la vida
@@ -732,7 +787,7 @@ por grupo de género, grafos de colaboración entre artistas y evaluación contr
 
 ---
 
-## 13. Anexos
+## 14. Anexos
 
 ### A. Diccionario de datos
 | Variable | Descripción |
@@ -771,7 +826,7 @@ por grupo de género, grafos de colaboración entre artistas y evaluación contr
 - **Regla de 1σ:** entre modelos estadísticamente equivalentes al mejor, elegir el más simple o regularizado.
 
 ### C. Figuras
-- `imagenes/`: figuras de EV1 (8), extraídas del notebook `ev1_ML_EDA_JohanSoto.ipynb`.
+- `imagenes/`: figuras de EV1 (8), extraídas del notebook `ev1_ML_EDA_JohanSotoFernandaAlcaino.ipynb`.
 - `images/ev2_*.png`: figuras de EV2 corregido (5).
 - `images/ev3_*.png`: figuras de EV3 (16).
 
@@ -780,4 +835,4 @@ en `images/` (en Colab: `/content/images/`).
 
 ---
 
-*Notebooks: `ev1_ML_EDA_JohanSoto.ipynb`, `ev2_ML_Modelo_JohanSoto.ipynb`, `ev3_ML_Optimizacion_JohanSoto.ipynb`.*
+*Notebooks: `ev1_ML_EDA_JohanSotoFernandaAlcaino.ipynb`, `ev2_ML_Modelo_JohanSotoFernandaAlcaino.ipynb`, `ev3_ML_Optimizacion_JohanSotoFernandaAlcaino.ipynb`.*
