@@ -167,23 +167,24 @@ MachineLearningSpotifyTracks/
 │   ├── Spotify_Tracks_Dataset.csv     ← original
 │   ├── spotify_tracks_clean.csv       ← salida de EV1 (entrada de EV2 y EV3)
 │   ├── kpis_spotify.csv
-│   └── spotify_tracks_evaluated.csv   ← salida de EV2
+│   └── spotify_tracks_evaluated.csv   ← salida de EV2 (se genera al ejecutar)
 ├── notebooks/
 │   ├── ev1_ML_EDA_JohanSotoFernandaAlcaino.ipynb
 │   ├── ev2_ML_Modelo_JohanSotoFernandaAlcaino.ipynb
 │   └── ev3_ML_Optimizacion_JohanSotoFernandaAlcaino.ipynb
 ├── models/
-│   ├── ev3_modelo_final.joblib        ← pipeline ganador + umbral
-│   └── cache_ev3/                     ← puntos de guardado de EV3
+│   ├── ev3_modelo_final.joblib        ← pipeline ganador + umbral (se genera al ejecutar)
+│   └── cache_ev3/                     ← puntos de guardado de EV3 (ignorado por git)
 ├── images/                            ← figuras generadas por EV2/EV3 (ev2_*.png, ev3_*.png)
 ├── imagenes/                          ← figuras de EV1 y de la versión original de EV2
-└── reports/                           ← tablas de resultados en CSV (ev2_*.csv, ev3_*.csv)
+└── reports/                           ← tablas de resultados en CSV (ev2_*.csv, ev3_*.csv; se generan al ejecutar)
 ```
 
 **Cómo reproducir:**
 1. `pip install -r requirements.txt` (scikit-learn ≥ 1.4, xgboost ≥ 2.1.4, pandas, matplotlib, seaborn, joblib).
-2. Ejecutar en orden **EV1 → EV2 → EV3** con *Restart & Run All*. EV2 y EV3 leen `spotify_tracks_clean.csv`
-   desde `../data/` (función `ubicar()`, que también busca en la carpeta actual y en `/content` de Colab).
+2. Ejecutar en orden **EV1 → EV2 → EV3** con *Restart & Run All*. Los tres notebooks leen y escriben en `../data/`
+   con la función `ubicar()`, que también busca en la carpeta actual y en `/content` de Colab. EV1 regenera
+   `spotify_tracks_clean.csv` desde el dataset original.
 3. Tiempos aproximados en CPU estándar: EV2 ≈ 10–15 min; EV3 ≈ 40–60 min la primera vez.
 4. EV3 guarda cada paso pesado en `models/cache_ev3/`: **si el entorno se reinicia, volver a ejecutar retoma desde
    el último paso guardado**. En Colab, ejecutar desde una carpeta de Google Drive para conservar los guardados.
