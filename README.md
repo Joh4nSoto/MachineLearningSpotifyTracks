@@ -175,8 +175,7 @@ MachineLearningSpotifyTracks/
 ├── models/
 │   ├── ev3_modelo_final.joblib        ← pipeline ganador + umbral (se genera al ejecutar)
 │   └── cache_ev3/                     ← puntos de guardado de EV3 (ignorado por git)
-├── images/                            ← figuras generadas por EV2/EV3 (ev2_*.png, ev3_*.png)
-├── imagenes/                          ← figuras de EV1 y de la versión original de EV2
+├── images/                            ← todas las figuras del proyecto (ev1_*.png, ev2_*.png, ev3_*.png)
 └── reports/                           ← tablas de resultados en CSV (ev2_*.csv, ev3_*.csv; se generan al ejecutar)
 ```
 
@@ -213,33 +212,33 @@ hay más de 600 filas por columna, sin riesgo de maldición de la dimensionalida
 
 ### 6.2 Hallazgos del EDA
 
-![Mapa de calor de correlaciones](imagenes/heatmap.png)
+![Mapa de calor de correlaciones](images/ev1_heatmap.png)
 
 - **Ninguna variable de audio se correlaciona linealmente con la popularidad** (|r| < 0.1). Primera señal de que
   el éxito depende de factores externos al sonido. Las relaciones fuertes son entre variables de audio
   (energía–loudness 0.76; energía–acousticness −0.73).
 
-![Géneros con mayor popularidad](imagenes/top_generos_populares.png)
-![Géneros con menor popularidad](imagenes/top_generos_menos_populares.png)
+![Géneros con mayor popularidad](images/ev1_top_generos_populares.png)
+![Géneros con menor popularidad](images/ev1_top_generos_menos_populares.png)
 
 - **El género es la gran diferencia:** pop-film, k-pop y chill lideran; iranian, romance y otros géneros de nicho
   tienen popularidad casi nula. Esto anticipa el sesgo de género que se confirmó en EV3.
 
-![Perfil acústico de las canciones populares](imagenes/perfil_acustico.png)
+![Perfil acústico de las canciones populares](images/ev1_perfil_acustico.png)
 
 - Las canciones con popularidad ≥ 75 son bailables (~0.65), enérgicas (~0.64), con voz y no en vivo.
 
-![Popularidad según tempo](imagenes/tempo_popularidad.png)
-![Popularidad según compás](imagenes/time_signature_popularidad.png)
+![Popularidad según tempo](images/ev1_tempo_popularidad.png)
+![Popularidad según compás](images/ev1_time_signature_popularidad.png)
 
 - Tempo favorable entre 80 y 170 BPM; compás 4/4 dominante.
 
-![Popularidad según duración](imagenes/ev1_duracion_popularidad.png)
+![Popularidad según duración](images/ev1_duracion_popularidad.png)
 
 - **Duración:** la popularidad sube hasta ~3.5–4.5 minutos y cae en canciones más largas. Esto justificó las
   variables `duration_min`, `is_short` e `is_long` de EV2.
 
-![Contenido explícito vs popularidad](imagenes/ev1_explicit_popularidad.png)
+![Contenido explícito vs popularidad](images/ev1_explicit_popularidad.png)
 
 - **Contenido explícito:** popularidad promedio 36.5 frente a 32.9 en canciones no explícitas. Esto justificó la
   interacción `explicit_x_dance`.
@@ -833,7 +832,8 @@ por grupo de género, grafos de colaboración entre artistas y evaluación contr
 - **Regla de 1σ:** entre modelos estadísticamente equivalentes al mejor, elegir el más simple o regularizado.
 
 ### C. Figuras
-- `imagenes/`: figuras de EV1 (8), extraídas del notebook `ev1_ML_EDA_JohanSotoFernandaAlcaino.ipynb`.
+Todas las figuras están en `images/`, con un prefijo por etapa:
+- `images/ev1_*.png`: figuras de EV1 (8), extraídas del notebook `ev1_ML_EDA_JohanSotoFernandaAlcaino.ipynb`.
 - `images/ev2_*.png`: figuras de EV2 corregido (5).
 - `images/ev3_*.png`: figuras de EV3 (17).
 
