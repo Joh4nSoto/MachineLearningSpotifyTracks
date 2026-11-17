@@ -190,6 +190,12 @@ MachineLearningSpotifyTracks/
    `BORRAR_CACHE = True` recalcula todo desde cero.
 5. Semilla fija (`RANDOM_STATE = 42`) en particiones, modelos y búsquedas. El modelo exportado se recarga y se
    verifica que reproduce exactamente las predicciones.
+6. **En Google Colab**, para tener los datos disponibles, ejecutar primero en una celda:
+   ```python
+   !git clone https://github.com/Joh4nSoto/MachineLearningSpotifyTracks.git
+   %cd MachineLearningSpotifyTracks/notebooks
+   ```
+   y luego abrir y ejecutar el notebook desde esa carpeta.
 
 ---
 
